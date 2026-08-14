@@ -1,3 +1,7 @@
+USE MeCarDB;
+GO
+
+-- Aquí abajo va todo el código de tus tablas (CREATE TABLE Clientes...)
 -- 1. Tabla de Clientes
 CREATE TABLE Clientes (
     IdCliente INT IDENTITY(1,1) PRIMARY KEY,
