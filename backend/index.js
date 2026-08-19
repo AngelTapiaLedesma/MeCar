@@ -20,6 +20,7 @@ app.use(require('./routes/clientes.routes'));
 app.use(require('./routes/vehiculos.routes'));
 app.use(require('./routes/historial.routes'));
 app.use(require('./routes/recordatorios.routes'));
+
 // Levantar el servidor y comprobar la base de datos
 app.listen(port, async () => {
     console.log(`[Servidor] Corriendo en http://localhost:${port}`);
