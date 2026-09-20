@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -10,6 +9,27 @@ services:
       - "1433:1433"
     volumes:
       - sqlserver_data:/var/opt/mssql
+
+  backend:
+    build: ./backend 
+    container_name: gestor_mecanico_backend
+    ports:
+      - "5000:5000" # Puerto típico de Flask
+    environment:
+      - DB_SERVER=sqlserver
+      - DB_USER=sa
+      - DB_PASSWORD=Mecanico_Admin123!
+      - PORT=5000
+    depends_on:
+      - sqlserver
+
+  frontend:
+    build: ./frontend 
+    container_name: gestor_mecanico_frontend
+    ports:
+      - "5173:5173" # Cambia a "3000:3000" si usaste Create React App en lugar de Vite
+    depends_on:
+      - backend
 
 volumes:
   sqlserver_data:

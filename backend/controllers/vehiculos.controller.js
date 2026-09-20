@@ -1,45 +1,51 @@
 const { getConnection, sql } = require('../db');
 
-// Función para obtener los autos de UN cliente en específico
-const getVehiculosDeCliente = async (req, res) => {
-    // Extraemos el ID del cliente desde la URL
-    const { idCliente } = req.params; 
-
+const getVehiculos = async (req, res) => {
     try {
         const pool = await getConnection();
-        const result = await pool.request()
-            .input('IdCliente', sql.Int, idCliente)
-            .query('SELECT * FROM Vehiculos WHERE IdCliente = @IdCliente');
-            
+        const result = await pool.request().query(`
+            SELECT v.*, c.NombreCompleto AS ClienteNombre
+            FROM Vehiculos v
+            INNER JOIN Clientes c ON c.IdCliente = v.IdCliente
+            ORDER BY v.Marca, v.Modelo
+        `);
         res.json(result.recordset);
     } catch (error) {
         res.status(500).send(error.message);
     }
 };
 
-// Función para registrar un auto nuevo
 const createVehiculo = async (req, res) => {
-    const { IdCliente, Placas, VIN, Marca, Modelo, Anio, Motor, KilometrajeActual } = req.body;
-    
+    const { IdCliente, Placas, Marca, Modelo, Anio, Color, KilometrajeActual } = req.body;
+
+    if (!IdCliente || !Placas || !Marca || !Modelo) {
+        return res
+            .status(400)
+            .json({ message: 'IdCliente, Placas, Marca y Modelo son obligatorios.' });
+    }
+
     try {
         const pool = await getConnection();
-        
-        await pool.request()
+        const result = await pool.request()
             .input('IdCliente', sql.Int, IdCliente)
             .input('Placas', sql.NVarChar, Placas)
-            .input('VIN', sql.NVarChar, VIN)
             .input('Marca', sql.NVarChar, Marca)
             .input('Modelo', sql.NVarChar, Modelo)
             .input('Anio', sql.Int, Anio)
-            .input('Motor', sql.NVarChar, Motor)
+            .input('Color', sql.NVarChar, Color)
             .input('KilometrajeActual', sql.Int, KilometrajeActual)
-            .query(`INSERT INTO Vehiculos (IdCliente, Placas, VIN, Marca, Modelo, Anio, Motor, KilometrajeActual) 
-                    VALUES (@IdCliente, @Placas, @VIN, @Marca, @Modelo, @Anio, @Motor, @KilometrajeActual)`);
-            
-        res.status(201).json({ message: '¡Automóvil registrado con éxito en el sistema!' });
+            .query(`
+                INSERT INTO Vehiculos (IdCliente, Placas, Marca, Modelo, Anio, Color, KilometrajeActual)
+                OUTPUT INSERTED.IdVehiculo
+                VALUES (@IdCliente, @Placas, @Marca, @Modelo, @Anio, @Color, @KilometrajeActual)
+            `);
+        res.status(201).json({
+            message: 'Vehículo registrado.',
+            IdVehiculo: result.recordset[0].IdVehiculo,
+        });
     } catch (error) {
         res.status(500).send(error.message);
     }
 };
 
-module.exports = { getVehiculosDeCliente, createVehiculo };
+module.exports = { getVehiculos, createVehiculo };

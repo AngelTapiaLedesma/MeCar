@@ -1,0 +1,136 @@
+// Mock data — reemplaza esto con datos de tu API/backend cuando esté listo.
+// La forma de este objeto es el "contrato" que tus componentes esperan,
+// así que cuando conectes el backend, solo tienes que respetar esta forma
+// (o mapear la respuesta de tu API a ella).
+
+export const clients = [
+  {
+    id: "1",
+    name: "Marcus Rivera",
+    initials: "MR",
+    color: "bg-amber-500",
+    phone: "+1 555-0142",
+    email: "m.rivera@email.com",
+    address: "1420 Maple Street, Springfield, IL 62704",
+    since: "Jan 2023",
+    status: "Active",
+    description: "Prefiere citas en la mañana. Cliente frecuente, siempre paga a tiempo.",
+    vehicles: [
+      { id: "v1", make: "Honda", model: "Civic", year: 2019, plate: "MRX-4421", color: "Plata" },
+      { id: "v2", make: "Ford", model: "F-150", year: 2021, plate: "FRD-8821", color: "Negro" },
+    ],
+  },
+  {
+    id: "2",
+    name: "Sarah Thompson",
+    initials: "ST",
+    color: "bg-lime-600",
+    phone: "+1 555-0187",
+    email: "s.thompson@email.com",
+    address: "88 Birchwood Ave, Springfield, IL 62701",
+    since: "Mar 2023",
+    status: "Active",
+    description: "",
+    vehicles: [
+      { id: "v3", make: "Honda", model: "Civic", year: 2019, plate: "MRX-4421", color: "Blanco" },
+    ],
+  },
+  {
+    id: "3",
+    name: "James Chen",
+    initials: "JC",
+    color: "bg-cyan-500",
+    phone: "+1 555-0234",
+    email: "j.chen@email.com",
+    address: "215 Lakeshore Dr, Springfield, IL 62702",
+    since: "Jun 2022",
+    status: "Active",
+    description: "Dueño de flotilla pequeña, trae varios vehículos seguido.",
+    vehicles: [
+      { id: "v4", make: "BMW", model: "3 Series", year: 2020, plate: "BWM-3398", color: "Gris" },
+      { id: "v5", make: "Kia", model: "Sportage", year: 2020, plate: "KIA-7743", color: "Rojo" },
+      { id: "v6", make: "Toyota", model: "Camry", year: 2018, plate: "TOY-2210", color: "Azul" },
+    ],
+  },
+  {
+    id: "4",
+    name: "Elena Martinez",
+    initials: "EM",
+    color: "bg-sky-400",
+    phone: "+1 555-0319",
+    email: "e.martinez@email.com",
+    address: "902 Cedar Lane, Springfield, IL 62703",
+    since: "Sep 2023",
+    status: "Active",
+    description: "",
+    vehicles: [
+      { id: "v7", make: "Toyota", model: "Camry", year: 2022, plate: "TCM-5510", color: "Negro" },
+    ],
+  },
+  {
+    id: "5",
+    name: "David Williams",
+    initials: "DW",
+    color: "bg-blue-600",
+    phone: "+1 555-0456",
+    email: "d.williams@email.com",
+    address: "44 Ridgeview Ct, Springfield, IL 62704",
+    since: "Dec 2022",
+    status: "Inactive",
+    description: "No ha vuelto desde la última revisión. Contactar para seguimiento.",
+    vehicles: [
+      { id: "v8", make: "Audi", model: "A4", year: 2018, plate: "ADI-7754", color: "Blanco" },
+      { id: "v9", make: "Mazda", model: "CX-5", year: 2017, plate: "MZD-3391", color: "Gris" },
+    ],
+  },
+  {
+    id: "6",
+    name: "Priya Patel",
+    initials: "PP",
+    color: "bg-purple-500",
+    phone: "+1 555-0521",
+    email: "p.patel@email.com",
+    address: "17 Willow St, Springfield, IL 62701",
+    since: "Feb 2024",
+    status: "Active",
+    description: "",
+    vehicles: [
+      { id: "v10", make: "Nissan", model: "Sentra", year: 2023, plate: "NSN-8843", color: "Plata" },
+    ],
+  },
+  {
+    id: "7",
+    name: "Nathan Okafor",
+    initials: "NO",
+    color: "bg-pink-500",
+    phone: "+1 555-0678",
+    email: "n.okafor@email.com",
+    address: "630 Elm Street, Springfield, IL 62702",
+    since: "Apr 2023",
+    status: "Active",
+    description: "Trae el auto de su esposa también. Muy puntual.",
+    vehicles: [
+      { id: "v11", make: "Nissan", model: "Altima", year: 2023, plate: "NIS-9923", color: "Negro" },
+      { id: "v12", make: "Honda", model: "CR-V", year: 2021, plate: "HCR-4471", color: "Blanco" },
+    ],
+  },
+  {
+    id: "8",
+    name: "Laura Schneider",
+    initials: "LS",
+    color: "bg-orange-600",
+    phone: "+1 555-0743",
+    email: "l.schneider@email.com",
+    address: "11 Aspen Court, Springfield, IL 62703",
+    since: "Jul 2024",
+    status: "Active",
+    description: "",
+    vehicles: [
+      { id: "v13", make: "Subaru", model: "Outback", year: 2023, plate: "SUB-1198", color: "Verde" },
+    ],
+  },
+];
+
+export function getClientById(id) {
+  return clients.find((c) => c.id === id);
+}
