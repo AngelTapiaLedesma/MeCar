@@ -1,6 +1,5 @@
 const { getConnection, sql } = require('../db');
 
-// Trae todos los clientes junto con sus vehículos (para la tabla de Clients)
 const getClientes = async (req, res) => {
     try {
         const pool = await getConnection();
@@ -22,7 +21,6 @@ const getClientes = async (req, res) => {
     }
 };
 
-// Trae un solo cliente con sus vehículos (para la pantalla de detalle)
 const getClienteById = async (req, res) => {
     const { id } = req.params;
     try {
@@ -49,8 +47,6 @@ const getClienteById = async (req, res) => {
     }
 };
 
-// Crea un cliente y, si vienen, sus vehículos — todo en una sola transacción
-// (si falla el vehículo, no se queda el cliente huérfano a medias)
 const createCliente = async (req, res) => {
     const {
         NombreCompleto,
@@ -113,4 +109,47 @@ const createCliente = async (req, res) => {
     }
 };
 
-module.exports = { getClientes, createCliente, getClienteById };
+// NUEVO: actualiza los datos del cliente (no toca sus vehículos, esos se
+// editan aparte desde la sección de Vehicles).
+const updateCliente = async (req, res) => {
+    const { id } = req.params;
+    const { NombreCompleto, Telefono, Email, Direccion, Notas, Estatus } = req.body;
+
+    if (!NombreCompleto || !Telefono) {
+        return res
+            .status(400)
+            .json({ message: 'NombreCompleto y Telefono son obligatorios.' });
+    }
+
+    try {
+        const pool = await getConnection();
+        const result = await pool.request()
+            .input('IdCliente', sql.Int, id)
+            .input('NombreCompleto', sql.NVarChar, NombreCompleto)
+            .input('Telefono', sql.NVarChar, Telefono)
+            .input('Email', sql.NVarChar, Email)
+            .input('Direccion', sql.NVarChar, Direccion)
+            .input('Notas', sql.NVarChar, Notas)
+            .input('Estatus', sql.Bit, Estatus === false || Estatus === 0 ? 0 : 1)
+            .query(`
+                UPDATE Clientes
+                SET NombreCompleto = @NombreCompleto,
+                    Telefono = @Telefono,
+                    Email = @Email,
+                    Direccion = @Direccion,
+                    Notas = @Notas,
+                    Estatus = @Estatus
+                WHERE IdCliente = @IdCliente
+            `);
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ message: 'Cliente no encontrado.' });
+        }
+
+        res.json({ message: 'Cliente actualizado.' });
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+};
+
+module.exports = { getClientes, createCliente, getClienteById, updateCliente };

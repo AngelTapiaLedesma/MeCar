@@ -3,17 +3,14 @@ const {
     getClientes,
     createCliente,
     getClienteById,
+    updateCliente,
 } = require('../controllers/clientes.controller');
 
 const router = Router();
 
-// Endpoint para obtener todos (GET)
 router.get('/clientes', getClientes);
-
-// NUEVO: Endpoint para obtener uno solo, con sus vehículos (GET)
 router.get('/clientes/:id', getClienteById);
-
-// Endpoint para insertar (POST)
 router.post('/clientes', createCliente);
+router.put('/clientes/:id', updateCliente);
 
 module.exports = router;

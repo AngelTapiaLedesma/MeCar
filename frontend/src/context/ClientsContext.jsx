@@ -26,13 +26,24 @@ export function ClientsProvider({ children }) {
     };
   }, []);
 
-  // Crea el cliente en el backend, trae la versión completa (con su Id real
-  // y vehículos ya guardados) y la mete al principio de la lista local.
   async function addClient(form) {
     const result = await createClient(form);
     const newClient = await fetchClientById(result.IdCliente);
     setClients((prev) => [newClient, ...prev]);
     return newClient;
+  }
+
+  // NUEVO: vuelve a traer un cliente por su id y actualiza esa fila dentro
+  // de la lista compartida. Úsalo después de editar un cliente en su
+  // página de detalle, para que la tabla de Clients no se quede desfasada.
+  async function refreshClient(id) {
+    const updated = await fetchClientById(id);
+    if (updated) {
+      setClients((prev) =>
+        prev.map((c) => (c.id === updated.id ? updated : c))
+      );
+    }
+    return updated;
   }
 
   function getClientById(id) {
@@ -41,7 +52,7 @@ export function ClientsProvider({ children }) {
 
   return (
     <ClientsContext.Provider
-      value={{ clients, loading, error, addClient, getClientById }}
+      value={{ clients, loading, error, addClient, refreshClient, getClientById }}
     >
       {children}
     </ClientsContext.Provider>

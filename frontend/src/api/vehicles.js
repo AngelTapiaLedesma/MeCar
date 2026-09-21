@@ -52,3 +52,33 @@ export async function createVehicle(form) {
     KilometrajeActual: form.mileage,
   });
 }
+
+// NUEVO: edita un vehículo existente.
+export async function updateVehicle(id, form) {
+  const res = await fetch(`${API_URL}/vehiculos/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      Placas: form.plate,
+      Marca: form.make,
+      Modelo: form.model,
+      Anio: form.year,
+      Color: form.color,
+      KilometrajeActual: form.mileage,
+    }),
+  });
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(message || "No se pudo actualizar el vehículo.");
+  }
+  return res.json();
+}
+
+export async function deleteVehicle(id) {
+  const res = await fetch(`${API_URL}/vehiculos/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(message || "No se pudo eliminar el vehículo.");
+  }
+  return res.json();
+}

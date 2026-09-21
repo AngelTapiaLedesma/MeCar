@@ -1,9 +1,4 @@
-// Capa de API — habla con tu backend Express (SQL Server) y traduce
-// los nombres de columna en español (NombreCompleto, Telefono, etc.)
-// a la forma que usan los componentes del frontend (name, phone, etc.).
-// Si cambias el backend, solo tocas este archivo.
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const AVATAR_COLORS = [
   "bg-amber-500",
@@ -27,7 +22,6 @@ function getInitials(name = "") {
   return (first + last).toUpperCase();
 }
 
-// Color determinístico según el IdCliente, así se ve igual en la lista y en el detalle.
 function colorForId(idCliente) {
   const n = Number(idCliente) || 0;
   return AVATAR_COLORS[n % AVATAR_COLORS.length];
@@ -109,4 +103,26 @@ export async function createClient(form) {
     throw new Error(message || "No se pudo registrar el cliente.");
   }
   return res.json(); // { message, IdCliente }
+}
+
+// NUEVO: actualiza los datos del cliente (nombre, teléfono, email,
+// dirección, notas, estatus). No toca sus vehículos.
+export async function updateClient(id, form) {
+  const res = await fetch(`${API_URL}/clientes/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      NombreCompleto: form.name,
+      Telefono: form.phone,
+      Email: form.email,
+      Direccion: form.address,
+      Notas: form.description,
+      Estatus: form.status === "Inactive" ? 0 : 1,
+    }),
+  });
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(message || "No se pudo actualizar el cliente.");
+  }
+  return res.json();
 }
