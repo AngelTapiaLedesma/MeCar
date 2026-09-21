@@ -6,6 +6,7 @@ import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
 import Vehicles from "./pages/Vehicles";
 import History from "./pages/History";
+import Settings from "./pages/Settings";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
             <Route path="/clients/:id" element={<ClientDetail />} />
             <Route path="/vehicles" element={<Vehicles />} />
             <Route path="/history" element={<History />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
         </Routes>
       </ClientsProvider>

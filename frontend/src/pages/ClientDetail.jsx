@@ -70,7 +70,7 @@ export default function ClientDetail() {
             {error
               ? `${error} — revisa que tu backend esté corriendo.`
               : "No encontramos a ese cliente."}{" "}
-            <Link to="/clients" className="text-orange-500 hover:underline">
+            <Link to="/cslients" className="text-orange-500 hover:underline">
               Volver a Clients
             </Link>
           </p>
