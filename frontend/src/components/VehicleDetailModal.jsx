@@ -86,6 +86,21 @@ export default function VehicleDetailModal({ open, onClose, vehicle }) {
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState(null);
 
+  // Mapa día -> [recordatorios que caen ese día en el mes visible].
+  // OJO: este hook debe ir SIEMPRE antes de cualquier "return null"
+  // condicional, o React truena con "Rendered more hooks than during
+  // the previous render" cuando el modal pasa de cerrado a abierto.
+  const dayMap = useMemo(() => {
+    const map = {};
+    for (const r of reminders) {
+      for (const day of occurrencesInMonth(r, viewYear, viewMonth)) {
+        if (!map[day]) map[day] = [];
+        map[day].push(r);
+      }
+    }
+    return map;
+  }, [reminders, viewYear, viewMonth]);
+
   function loadReminders() {
     if (!vehicle) return;
     setLoading(true);
@@ -203,18 +218,6 @@ export default function VehicleDetailModal({ open, onClose, vehicle }) {
       setViewMonth((m) => m + 1);
     }
   }
-
-  // Mapa día -> [recordatorios que caen ese día en el mes visible]
-  const dayMap = useMemo(() => {
-    const map = {};
-    for (const r of reminders) {
-      for (const day of occurrencesInMonth(r, viewYear, viewMonth)) {
-        if (!map[day]) map[day] = [];
-        map[day].push(r);
-      }
-    }
-    return map;
-  }, [reminders, viewYear, viewMonth]);
 
   const firstWeekday = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();

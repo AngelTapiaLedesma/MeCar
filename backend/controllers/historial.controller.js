@@ -3,9 +3,6 @@ const { getConnection, sql } = require('../db');
 const getHistorial = async (req, res) => {
     try {
         const pool = await getConnection();
-        // LEFT JOIN a propósito: si el vehículo (o su cliente) ya no existe
-        // porque se borró, esta fila no debe desaparecer — usamos el
-        // Snapshot guardado al crear el ticket como respaldo.
         const serviciosResult = await pool.request().query(`
             SELECT
                 s.*,
@@ -55,9 +52,6 @@ const createTicket = async (req, res) => {
     try {
         await transaction.begin();
 
-        // Guardamos la "foto" del vehículo y del cliente AHORA, mientras
-        // todavía existen — así el historial sigue siendo legible aunque
-        // el vehículo se borre después.
         const infoResult = await new sql.Request(transaction)
             .input('IdVehiculo', sql.Int, IdVehiculo)
             .query(`
@@ -118,4 +112,126 @@ const createTicket = async (req, res) => {
     }
 };
 
-module.exports = { getHistorial, createTicket };
+// Edita un ticket completo (datos + reemplaza todas sus líneas).
+// Si el ticket ya está 'Closed', se rechaza — el candado se hace cumplir
+// aquí en el servidor, no solo escondiendo botones en el frontend.
+const updateTicket = async (req, res) => {
+    const { id } = req.params;
+    const {
+        Tecnico,
+        FechaServicio,
+        Items = [],
+        CostoManoObra = 0,
+        MargenGanancia = 0,
+        Notas,
+        Estatus,
+    } = req.body;
+
+    if (Items.length === 0) {
+        return res.status(400).json({ message: 'Debe haber al menos un item.' });
+    }
+
+    const pool = await getConnection();
+    const transaction = new sql.Transaction(pool);
+
+    try {
+        await transaction.begin();
+
+        const currentResult = await new sql.Request(transaction)
+            .input('IdServicio', sql.Int, id)
+            .query('SELECT Estatus FROM HistorialServicios WHERE IdServicio = @IdServicio');
+
+        if (currentResult.recordset.length === 0) {
+            await transaction.rollback();
+            return res.status(404).json({ message: 'Ticket no encontrado.' });
+        }
+        if (currentResult.recordset[0].Estatus === 'Closed') {
+            await transaction.rollback();
+            return res
+                .status(423)
+                .json({ message: 'Este ticket está cerrado y ya no se puede modificar.' });
+        }
+
+        const CostoPiezas = Items.reduce((sum, i) => sum + Number(i.Precio || 0), 0);
+        const Titulo = Items.map((i) => i.Nombre).slice(0, 3).join(', ') || 'Servicio';
+        const nuevoEstatus = Estatus === 'Closed' ? 'Closed' : 'In Progress';
+
+        await new sql.Request(transaction)
+            .input('IdServicio', sql.Int, id)
+            .input('Tecnico', sql.NVarChar, Tecnico)
+            .input('FechaServicio', sql.DateTime, FechaServicio ? new Date(FechaServicio) : new Date())
+            .input('Titulo', sql.NVarChar, Titulo)
+            .input('Descripcion', sql.NVarChar, Notas || '')
+            .input('CostoPiezas', sql.Decimal(10, 2), CostoPiezas)
+            .input('CostoManoObra', sql.Decimal(10, 2), CostoManoObra)
+            .input('MargenGanancia', sql.Decimal(10, 2), MargenGanancia)
+            .input('Estatus', sql.NVarChar, nuevoEstatus)
+            .query(`
+                UPDATE HistorialServicios
+                SET Tecnico = @Tecnico,
+                    FechaServicio = @FechaServicio,
+                    Titulo = @Titulo,
+                    Descripcion = @Descripcion,
+                    CostoPiezas = @CostoPiezas,
+                    CostoManoObra = @CostoManoObra,
+                    MargenGanancia = @MargenGanancia,
+                    Estatus = @Estatus
+                WHERE IdServicio = @IdServicio
+            `);
+
+        // Reemplaza todas las líneas: se borran las viejas y se insertan las nuevas.
+        await new sql.Request(transaction)
+            .input('IdServicio', sql.Int, id)
+            .query('DELETE FROM ServicioItems WHERE IdServicio = @IdServicio');
+
+        for (const item of Items) {
+            await new sql.Request(transaction)
+                .input('IdServicio', sql.Int, id)
+                .input('Nombre', sql.NVarChar, item.Nombre)
+                .input('Precio', sql.Decimal(10, 2), item.Precio)
+                .input('Origen', sql.NVarChar, item.Origen || 'custom')
+                .input('IdCatalogoItem', sql.Int, item.IdCatalogoItem || null)
+                .query(`
+                    INSERT INTO ServicioItems (IdServicio, Nombre, Precio, Origen, IdCatalogoItem)
+                    VALUES (@IdServicio, @Nombre, @Precio, @Origen, @IdCatalogoItem)
+                `);
+        }
+
+        await transaction.commit();
+        res.json({ message: 'Ticket actualizado.' });
+    } catch (error) {
+        await transaction.rollback();
+        res.status(500).send(error.message);
+    }
+};
+
+// Borra un ticket — solo si NO está cerrado.
+const deleteTicket = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pool = await getConnection();
+
+        const currentResult = await pool.request()
+            .input('IdServicio', sql.Int, id)
+            .query('SELECT Estatus FROM HistorialServicios WHERE IdServicio = @IdServicio');
+
+        if (currentResult.recordset.length === 0) {
+            return res.status(404).json({ message: 'Ticket no encontrado.' });
+        }
+        if (currentResult.recordset[0].Estatus === 'Closed') {
+            return res
+                .status(423)
+                .json({ message: 'Este ticket está cerrado y no se puede eliminar.' });
+        }
+
+        await pool.request()
+            .input('IdServicio', sql.Int, id)
+            .query('DELETE FROM HistorialServicios WHERE IdServicio = @IdServicio');
+
+        res.json({ message: 'Ticket eliminado.' });
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+};
+
+module.exports = { getHistorial, createTicket, updateTicket, deleteTicket };

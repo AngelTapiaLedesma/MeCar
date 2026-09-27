@@ -1,9 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 function mapTicketFromApi(raw) {
-  // Si el vehículo sigue existiendo, usamos los datos en vivo. Si ya se
-  // borró (tickets cerrados que sobrevivieron), caemos al Snapshot que se
-  // guardó al crear el ticket.
   const vehicle = raw.Marca
     ? `${raw.Marca} ${raw.Modelo} ${raw.Anio}`
     : raw.VehiculoSnapshot || "Vehículo eliminado";
@@ -31,6 +28,7 @@ function mapTicketFromApi(raw) {
       name: i.Nombre,
       price: Number(i.Precio),
       origin: i.Origen,
+      catalogItemId: i.IdCatalogoItem || null,
     })),
   };
 }
@@ -51,6 +49,30 @@ export async function createTicket(payload) {
   if (!res.ok) {
     const message = await res.text();
     throw new Error(message || "No se pudo crear el ticket.");
+  }
+  return res.json();
+}
+
+// NUEVO: edita un ticket. El backend rechaza esto si ya está 'Closed'.
+export async function updateTicket(id, payload) {
+  const res = await fetch(`${API_URL}/historial/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(message || "No se pudo actualizar el ticket.");
+  }
+  return res.json();
+}
+
+// NUEVO: borra un ticket. El backend rechaza esto si ya está 'Closed'.
+export async function deleteTicket(id) {
+  const res = await fetch(`${API_URL}/historial/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(message || "No se pudo eliminar el ticket.");
   }
   return res.json();
 }
