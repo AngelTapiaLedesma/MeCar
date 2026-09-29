@@ -33,6 +33,7 @@ export default function RepairItemsSection({
 
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState("");
+  const [confirmDeleteSectionId, setConfirmDeleteSectionId] = useState(null);
 
   useEffect(() => {
     if (readOnly) return;
@@ -69,8 +70,6 @@ export default function RepairItemsSection({
       </div>
     );
   }
-
-  const sectionsToRender = editMode ? draftSections : catalog;
 
   function toggleSection(id) {
     setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -117,6 +116,7 @@ export default function RepairItemsSection({
     setDeletedSectionIds([]);
     setDeletedItemIds([]);
     setCatalogSaveError(null);
+    setConfirmDeleteSectionId(null);
   }
 
   function addDraftSection() {
@@ -267,6 +267,7 @@ export default function RepairItemsSection({
       setDraftSections([]);
       setDeletedSectionIds([]);
       setDeletedItemIds([]);
+      setConfirmDeleteSectionId(null);
     } catch (err) {
       setCatalogSaveError(
         err.message || "Ocurrió un error al guardar los cambios del catálogo."
@@ -282,25 +283,7 @@ export default function RepairItemsSection({
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           Repair Items
         </p>
-        {editMode ? (
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={cancelEdit}
-              className="text-xs font-medium text-slate-500 hover:text-slate-700"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={saveCatalogChanges}
-              disabled={savingCatalog}
-              className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-600 disabled:opacity-60"
-            >
-              {savingCatalog ? "Guardando..." : "Guardar cambios"}
-            </button>
-          </div>
-        ) : (
+        {!editMode && (
           <button
             type="button"
             onClick={enterEditMode}
@@ -311,121 +294,176 @@ export default function RepairItemsSection({
         )}
       </div>
 
-      {catalogSaveError && (
-        <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
-          {catalogSaveError}
-        </p>
-      )}
+      {editMode ? (
+        <div className="mb-3 rounded-xl border-2 border-orange-300 bg-orange-50/40 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-semibold text-orange-700">
+              Editando catálogo — estos cambios afectan a todos los tickets futuros
+            </p>
+            <div className="flex shrink-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="text-xs font-medium text-slate-500 hover:text-slate-700"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={saveCatalogChanges}
+                disabled={savingCatalog}
+                className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-600 disabled:opacity-60"
+              >
+                {savingCatalog ? "Guardando..." : "Guardar cambios"}
+              </button>
+            </div>
+          </div>
 
-      {editMode && (
-        <button
-          type="button"
-          onClick={addDraftSection}
-          className="mb-2 flex items-center gap-1 text-xs font-medium text-orange-500 hover:text-orange-600"
-        >
-          <Plus className="h-3.5 w-3.5" /> Agregar sección
-        </button>
-      )}
+          {catalogSaveError && (
+            <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+              {catalogSaveError}
+            </p>
+          )}
 
-      {catalogLoading ? (
-        <p className="text-xs text-slate-400">Cargando catálogo...</p>
-      ) : (
-        <div className="space-y-2">
-          {sectionsToRender.map((s) => (
-            <div key={s.IdSeccion} className="rounded-lg border border-slate-200">
-              <div className="flex items-center justify-between px-4 py-2.5">
-                {editMode ? (
+          <button
+            type="button"
+            onClick={addDraftSection}
+            className="mb-2 flex items-center gap-1 text-xs font-medium text-orange-500 hover:text-orange-600"
+          >
+            <Plus className="h-3.5 w-3.5" /> Agregar sección
+          </button>
+
+          <div className="space-y-2 bg-white">
+            {draftSections.map((s) => (
+              <div key={s.IdSeccion} className="rounded-lg border border-slate-200">
+                <div className="flex items-center justify-between px-4 py-2.5">
                   <input
                     value={s.Nombre}
                     onChange={(e) => updateDraftSectionName(s.IdSeccion, e.target.value)}
                     placeholder="Nombre de sección"
                     className="flex-1 rounded border border-slate-200 px-2 py-1 text-sm font-semibold outline-none focus:border-orange-400"
                   />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => toggleSection(s.IdSeccion)}
-                    className="flex flex-1 items-center justify-between text-left text-sm font-semibold text-slate-900"
-                  >
-                    {s.Nombre}
-                    {openSections[s.IdSeccion] ? (
-                      <ChevronUp className="h-4 w-4 text-slate-400" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 text-slate-400" />
-                    )}
-                  </button>
-                )}
-                {editMode && (
-                  <button
-                    type="button"
-                    onClick={() => removeDraftSection(s.IdSeccion)}
-                    className="ml-2 text-slate-300 hover:text-red-500"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+                  {confirmDeleteSectionId !== s.IdSeccion && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteSectionId(s.IdSeccion)}
+                      className="ml-2 shrink-0 text-slate-300 hover:text-red-500"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
 
-              {(editMode || openSections[s.IdSeccion]) && (
-                <div className="border-t border-slate-100 px-4 py-3">
-                  {editMode ? (
-                    <div className="space-y-2">
-                      {s.Items.map((item) => (
-                        <div key={item.IdItem} className="flex items-center gap-2">
-                          <input
-                            value={item.Nombre}
-                            onChange={(e) =>
-                              updateDraftItem(s.IdSeccion, item.IdItem, "Nombre", e.target.value)
-                            }
-                            placeholder="Nombre del item"
-                            className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-orange-400"
-                          />
-                          <input
-                            type="number"
-                            value={item.PrecioBase}
-                            onChange={(e) =>
-                              updateDraftItem(s.IdSeccion, item.IdItem, "PrecioBase", e.target.value)
-                            }
-                            className="w-24 rounded border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-orange-400"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeDraftItem(s.IdSeccion, item.IdItem)}
-                            className="text-slate-300 hover:text-red-500"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
+                {confirmDeleteSectionId === s.IdSeccion && (
+                  <div className="flex items-center gap-2 border-t border-red-100 bg-red-50 px-4 py-2.5">
+                    <span className="text-xs text-red-600">
+                      ¿Eliminar "{s.Nombre || "esta sección"}"? Se eliminarán
+                      también todos los items de adentro.
+                    </span>
+                    <div className="ml-auto flex shrink-0 gap-2">
                       <button
                         type="button"
-                        onClick={() => addDraftItem(s.IdSeccion)}
-                        className="text-xs font-medium text-orange-500 hover:text-orange-600"
+                        onClick={() => setConfirmDeleteSectionId(null)}
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
                       >
-                        + Agregar item
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          removeDraftSection(s.IdSeccion);
+                          setConfirmDeleteSectionId(null);
+                        }}
+                        className="rounded-lg bg-red-500 px-2 py-1 text-xs font-medium text-white hover:bg-red-600"
+                      >
+                        Confirmar
                       </button>
                     </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {s.Items.map((item) => (
+                  </div>
+                )}
+
+                <div className="border-t border-slate-100 px-4 py-3">
+                  <div className="space-y-2">
+                    {s.Items.map((item) => (
+                      <div key={item.IdItem} className="flex items-center gap-2">
+                        <input
+                          value={item.Nombre}
+                          onChange={(e) =>
+                            updateDraftItem(s.IdSeccion, item.IdItem, "Nombre", e.target.value)
+                          }
+                          placeholder="Nombre del item"
+                          className="flex-1 rounded border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-orange-400"
+                        />
+                        <input
+                          type="number"
+                          value={item.PrecioBase}
+                          onChange={(e) =>
+                            updateDraftItem(s.IdSeccion, item.IdItem, "PrecioBase", e.target.value)
+                          }
+                          className="w-24 rounded border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-orange-400"
+                        />
                         <button
-                          key={item.IdItem}
                           type="button"
-                          onClick={() => addCatalogItemToTicket(item)}
-                          className="flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
+                          onClick={() => removeDraftItem(s.IdSeccion, item.IdItem)}
+                          className="text-slate-300 hover:text-red-500"
                         >
-                          <Plus className="h-3 w-3" />
-                          {item.Nombre}{" "}
-                          <span className="text-slate-400">
-                            ${Number(item.PrecioBase).toFixed(2)}
-                          </span>
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
-                      ))}
-                      {s.Items.length === 0 && (
-                        <p className="text-xs text-slate-400">Sin items todavía.</p>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addDraftItem(s.IdSeccion)}
+                      className="text-xs font-medium text-orange-500 hover:text-orange-600"
+                    >
+                      + Agregar item
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : catalogLoading ? (
+        <p className="text-xs text-slate-400">Cargando catálogo...</p>
+      ) : (
+        <div className="mb-3 space-y-2">
+          {catalog.map((s) => (
+            <div key={s.IdSeccion} className="rounded-lg border border-slate-200">
+              <button
+                type="button"
+                onClick={() => toggleSection(s.IdSeccion)}
+                className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-semibold text-slate-900"
+              >
+                {s.Nombre}
+                {openSections[s.IdSeccion] ? (
+                  <ChevronUp className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                )}
+              </button>
+
+              {openSections[s.IdSeccion] && (
+                <div className="border-t border-slate-100 px-4 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    {s.Items.map((item) => (
+                      <button
+                        key={item.IdItem}
+                        type="button"
+                        onClick={() => addCatalogItemToTicket(item)}
+                        className="flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
+                      >
+                        <Plus className="h-3 w-3" />
+                        {item.Nombre}{" "}
+                        <span className="text-slate-400">
+                          ${Number(item.PrecioBase).toFixed(2)}
+                        </span>
+                      </button>
+                    ))}
+                    {s.Items.length === 0 && (
+                      <p className="text-xs text-slate-400">Sin items todavía.</p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

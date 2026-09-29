@@ -102,11 +102,9 @@ export async function createClient(form) {
     const message = await res.text();
     throw new Error(message || "No se pudo registrar el cliente.");
   }
-  return res.json(); // { message, IdCliente }
+  return res.json();
 }
 
-// NUEVO: actualiza los datos del cliente (nombre, teléfono, email,
-// dirección, notas, estatus). No toca sus vehículos.
 export async function updateClient(id, form) {
   const res = await fetch(`${API_URL}/clientes/${id}`, {
     method: "PUT",
@@ -123,6 +121,17 @@ export async function updateClient(id, form) {
   if (!res.ok) {
     const message = await res.text();
     throw new Error(message || "No se pudo actualizar el cliente.");
+  }
+  return res.json();
+}
+
+// NUEVO: borra un cliente. Sus vehículos se van con él (el backend ya
+// resuelve la regla de tickets abiertos/cerrados).
+export async function deleteClient(id) {
+  const res = await fetch(`${API_URL}/clientes/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(message || "No se pudo eliminar el cliente.");
   }
   return res.json();
 }

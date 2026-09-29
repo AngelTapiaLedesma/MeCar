@@ -1,15 +1,119 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import Topbar from "../components/Topbar";
-import AddClientModal from "../components/AddClientModal.jsx";
+import AddClientModal from "../components/AddClientModal";
+import EditClientModal from "../components/EditClientModal";
+import { deleteClient } from "../api/clients";
 import { useClients } from "../context/ClientsContext";
+
+function RowMenu({ client, onEdit, onDeleted }) {
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState(null);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        setConfirming(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  async function handleDelete() {
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteClient(client.id);
+      setOpen(false);
+      setConfirming(false);
+      onDeleted(client.id);
+    } catch (err) {
+      setError(err.message || "No se pudo eliminar.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div ref={ref} className="relative inline-block" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+
+      {open && !confirming && (
+        <div className="absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+          <button
+            onClick={() => {
+              setOpen(false);
+              onEdit(client);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50"
+          >
+            <Pencil className="h-3.5 w-3.5" /> Editar
+          </button>
+          <button
+            onClick={() => setConfirming(true)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Eliminar
+          </button>
+        </div>
+      )}
+
+      {open && confirming && (
+        <div className="absolute right-0 z-20 mt-1 w-64 space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
+          <p className="text-xs text-slate-600">
+            ¿Eliminar a <span className="font-medium">{client.name}</span>?
+            {client.vehicles.length > 0 && (
+              <>
+                {" "}
+                Se eliminarán también{" "}
+                <span className="font-medium text-red-500">
+                  sus {client.vehicles.length} vehículo
+                  {client.vehicles.length !== 1 ? "s" : ""} registrado
+                  {client.vehicles.length !== 1 ? "s" : ""}
+                </span>
+                .
+              </>
+            )}
+          </p>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setConfirming(false)}
+              className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="rounded-lg bg-red-500 px-2 py-1 text-xs font-medium text-white hover:bg-red-600 disabled:opacity-60"
+            >
+              {deleting ? "Eliminando..." : "Eliminar"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Clients() {
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [editClient, setEditClient] = useState(null);
   const navigate = useNavigate();
-  const { clients, loading, error, addClient } = useClients();
+  const { clients, loading, error, addClient, refreshClient, removeClient } = useClients();
 
   const filtered = clients.filter((c) =>
     c.name.toLowerCase().includes(query.toLowerCase())
@@ -63,25 +167,20 @@ export default function Clients() {
                   <th className="px-6 py-3 font-medium">Vehicles</th>
                   <th className="px-6 py-3 font-medium">Since</th>
                   <th className="px-6 py-3 font-medium">Status</th>
+                  <th className="px-6 py-3 font-medium"></th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="px-6 py-8 text-center text-sm text-slate-400"
-                    >
+                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-400">
                       Cargando clientes...
                     </td>
                   </tr>
                 )}
                 {!loading && error && (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="px-6 py-8 text-center text-sm text-red-500"
-                    >
+                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-red-500">
                       {error} — revisa que tu backend esté corriendo.
                     </td>
                   </tr>
@@ -122,14 +221,14 @@ export default function Clients() {
                         {c.status}
                       </span>
                     </td>
+                    <td className="px-6 py-3 text-right">
+                      <RowMenu client={c} onEdit={setEditClient} onDeleted={removeClient} />
+                    </td>
                   </tr>
                 ))}
                 {!loading && !error && filtered.length === 0 && (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="px-6 py-8 text-center text-sm text-slate-400"
-                    >
+                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-400">
                       No clients match "{query}".
                     </td>
                   </tr>
@@ -144,6 +243,13 @@ export default function Clients() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
+      />
+
+      <EditClientModal
+        open={!!editClient}
+        onClose={() => setEditClient(null)}
+        client={editClient}
+        onUpdated={() => refreshClient(editClient.id)}
       />
     </>
   );

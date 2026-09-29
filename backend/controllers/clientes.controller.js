@@ -109,8 +109,6 @@ const createCliente = async (req, res) => {
     }
 };
 
-// NUEVO: actualiza los datos del cliente (no toca sus vehículos, esos se
-// editan aparte desde la sección de Vehicles).
 const updateCliente = async (req, res) => {
     const { id } = req.params;
     const { NombreCompleto, Telefono, Email, Direccion, Notas, Estatus } = req.body;
@@ -152,4 +150,49 @@ const updateCliente = async (req, res) => {
     }
 };
 
-module.exports = { getClientes, createCliente, getClienteById, updateCliente };
+// Borra un cliente. Sus vehículos se van con él (FK ON DELETE CASCADE de
+// Vehiculos -> Clientes). Antes de eso, borramos manualmente los tickets
+// ABIERTOS ('In Progress') de esos vehículos — igual que al borrar un
+// vehículo suelto — para que los tickets CERRADOS sí sobrevivan en el
+// historial (se desvinculan solos, ON DELETE SET NULL, con su Snapshot).
+const deleteCliente = async (req, res) => {
+    const { id } = req.params;
+    const pool = await getConnection();
+    const transaction = new sql.Transaction(pool);
+
+    try {
+        await transaction.begin();
+
+        await new sql.Request(transaction)
+            .input('IdCliente', sql.Int, id)
+            .query(`
+                DELETE hs
+                FROM HistorialServicios hs
+                INNER JOIN Vehiculos v ON v.IdVehiculo = hs.IdVehiculo
+                WHERE v.IdCliente = @IdCliente AND hs.Estatus = 'In Progress'
+            `);
+
+        const result = await new sql.Request(transaction)
+            .input('IdCliente', sql.Int, id)
+            .query('DELETE FROM Clientes WHERE IdCliente = @IdCliente');
+
+        if (result.rowsAffected[0] === 0) {
+            await transaction.rollback();
+            return res.status(404).json({ message: 'Cliente no encontrado.' });
+        }
+
+        await transaction.commit();
+        res.json({ message: 'Cliente eliminado.' });
+    } catch (error) {
+        await transaction.rollback();
+        res.status(500).send(error.message);
+    }
+};
+
+module.exports = {
+    getClientes,
+    createCliente,
+    getClienteById,
+    updateCliente,
+    deleteCliente,
+};

@@ -50,9 +50,13 @@ export function ClientsProvider({ children }) {
     return clients.find((c) => c.id === String(id));
   }
 
+  function removeClient(id) {
+    setClients((prev) => prev.filter((c) => c.id !== String(id)));
+  }
+
   return (
     <ClientsContext.Provider
-      value={{ clients, loading, error, addClient, refreshClient, getClientById }}
+      value={{ clients, loading, error, addClient, refreshClient, removeClient, getClientById }}
     >
       {children}
     </ClientsContext.Provider>
