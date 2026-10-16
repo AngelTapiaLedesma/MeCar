@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, Lock, Car, User, Calendar } from "lucide-react";
 import { updateTicket } from "../api/history";
 import RepairItemsSection from "./RepairItemsSection";
+import TicketSummarySection from "./TicketSummarySection";
 
 const TECHNICIANS = ["Alex Kovacs", "Sam Torres", "Jordan Mills"];
 
@@ -201,71 +202,72 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
             </div>
           </div>
 
-          <RepairItemsSection
+          <RepairItemsSection onAdd={handleAddItem} readOnly={readOnly} />
+
+          <TicketSummarySection
             items={items}
-            onAdd={handleAddItem}
             onUpdatePrice={handleUpdateItemPrice}
             onRemove={handleRemoveItem}
             readOnly={readOnly}
-          />
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
+                  Labor ($)
+                </label>
+                {readOnly ? (
+                  <p className="text-sm text-slate-700">${Number(laborCost).toFixed(2)}</p>
+                ) : (
+                  <input
+                    type="number"
+                    value={laborCost}
+                    onChange={(e) => setLaborCost(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
+                  Margin ($)
+                </label>
+                {readOnly ? (
+                  <p className="text-sm text-slate-700">${Number(margin).toFixed(2)}</p>
+                ) : (
+                  <input
+                    type="number"
+                    value={margin}
+                    onChange={(e) => setMargin(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
+                  />
+                )}
+              </div>
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
-                Labor ($)
+                Notes
               </label>
               {readOnly ? (
-                <p className="text-sm text-slate-700">${Number(laborCost).toFixed(2)}</p>
+                <p className="text-sm text-slate-600">{notes || "—"}</p>
               ) : (
-                <input
-                  type="number"
-                  value={laborCost}
-                  onChange={(e) => setLaborCost(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
                 />
               )}
             </div>
-            <div>
-              <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
-                Margin ($)
-              </label>
-              {readOnly ? (
-                <p className="text-sm text-slate-700">${Number(margin).toFixed(2)}</p>
-              ) : (
-                <input
-                  type="number"
-                  value={margin}
-                  onChange={(e) => setMargin(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
-                />
-              )}
-            </div>
-          </div>
 
-          <div>
-            <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
-              Notes
-            </label>
-            {readOnly ? (
-              <p className="text-sm text-slate-600">{notes || "—"}</p>
-            ) : (
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
-              />
-            )}
-          </div>
-
-          <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-            <div className="text-xs text-slate-400">
-              Parts ${partsSubtotal.toFixed(2)} + Labor $
-              {(Number(laborCost) || 0).toFixed(2)} + Margin $
-              {(Number(margin) || 0).toFixed(2)}
+            <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+              <div className="text-xs text-slate-400">
+                Parts ${partsSubtotal.toFixed(2)} + Labor $
+                {(Number(laborCost) || 0).toFixed(2)} + Margin $
+                {(Number(margin) || 0).toFixed(2)}
+              </div>
+              <p className="text-lg font-bold text-orange-500">${total.toFixed(2)}</p>
             </div>
-            <p className="text-lg font-bold text-orange-500">${total.toFixed(2)}</p>
-          </div>
+          </TicketSummarySection>
 
           {saveError && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">

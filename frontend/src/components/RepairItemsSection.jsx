@@ -9,17 +9,15 @@ import {
   deleteCatalogItem,
 } from "../api/catalog";
 
-// items: [{ id, name, price, origin: 'catalogo'|'custom', catalogItemId }]
-// onAdd(item), onUpdatePrice(id, value), onRemove(id)
-// readOnly: cuando el ticket ya está cerrado — solo muestra la lista, sin
-// catálogo, sin edición, sin poder agregar/quitar/editar precios.
-export default function RepairItemsSection({
-  items,
-  onAdd,
-  onUpdatePrice,
-  onRemove,
-  readOnly = false,
-}) {
+// Selector para AGREGAR items al ticket: catálogo (con su modo edición) +
+// input de item custom. La lista de lo que ya se agregó NO vive aquí: está
+// en <TicketSummarySection />, un bloque aparte, para que se lea como
+// "lo que va a quedar" y no como parte de "lo que estoy agregando".
+//
+// onAdd(item): item = { id, name, price, origin: 'catalogo'|'custom', catalogItemId }
+// readOnly: ticket cerrado o en modo "solo ver" — no hay nada que agregar,
+// así que el selector completo se oculta.
+export default function RepairItemsSection({ onAdd, readOnly = false }) {
   const [catalog, setCatalog] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [openSections, setOpenSections] = useState({});
@@ -48,28 +46,7 @@ export default function RepairItemsSection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (readOnly) {
-    return (
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Repair Items
-        </p>
-        <div className="space-y-2">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2"
-            >
-              <span className="text-sm text-slate-700">{item.name}</span>
-              <span className="text-sm font-medium text-slate-900">
-                ${Number(item.price).toFixed(2)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (readOnly) return null;
 
   function toggleSection(id) {
     setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -494,39 +471,6 @@ export default function RepairItemsSection({
           <Plus className="h-3.5 w-3.5" /> Add
         </button>
       </div>
-
-      {items.length === 0 ? (
-        <p className="mt-3 text-center text-xs text-slate-400">
-          Pick from the menu above or add a custom item to begin
-        </p>
-      ) : (
-        <div className="mt-3 space-y-2">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2"
-            >
-              <span className="text-sm text-slate-700">{item.name}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">$</span>
-                <input
-                  type="number"
-                  value={item.price}
-                  onChange={(e) => onUpdatePrice(item.id, e.target.value)}
-                  className="w-20 rounded border border-slate-200 px-2 py-1 text-right text-sm outline-none focus:border-orange-400"
-                />
-                <button
-                  type="button"
-                  onClick={() => onRemove(item.id)}
-                  className="text-slate-300 hover:text-red-500"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

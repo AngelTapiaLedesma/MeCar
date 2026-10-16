@@ -3,6 +3,7 @@ import { X, Search, Plus, UserPlus, FileText, Calendar } from "lucide-react";
 import AddClientModal from "./AddClientModal";
 import AddVehicleModal from "./AddVehicleModal";
 import RepairItemsSection from "./RepairItemsSection";
+import TicketSummarySection from "./TicketSummarySection";
 import { useClients } from "../context/ClientsContext";
 import { fetchVehicles } from "../api/vehicles";
 import { createTicket } from "../api/history";
@@ -29,7 +30,7 @@ function pillClass(active) {
     "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
     active
       ? "border-orange-500 bg-orange-50 text-orange-600"
-      : "border-slate-200 text-slate-500 hover:bg-slate-50",
+      : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50",
   ].join(" ");
 }
 
@@ -358,111 +359,112 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
                 </div>
               </div>
 
-              <RepairItemsSection
+              <RepairItemsSection onAdd={handleAddItem} />
+
+              <TicketSummarySection
                 items={ticketItems}
-                onAdd={handleAddItem}
                 onUpdatePrice={handleUpdateItemPrice}
                 onRemove={handleRemoveItem}
-              />
-
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="mb-2 text-[11px] font-semibold uppercase text-slate-400">
-                    Labor
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setLaborMode("none")}
-                      className={pillClass(laborMode === "none")}
-                    >
-                      None
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLaborMode("fixed")}
-                      className={pillClass(laborMode === "fixed")}
-                    >
-                      Fixed $
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLaborMode("percent_parts")}
-                      className={pillClass(laborMode === "percent_parts")}
-                    >
-                      % of parts
-                    </button>
-                  </div>
-                  {laborMode !== "none" && (
-                    <div className="mt-2 flex items-center gap-1">
-                      <span className="text-xs text-slate-400">
-                        {laborMode === "fixed" ? "$" : "%"}
-                      </span>
-                      <input
-                        type="number"
-                        value={laborValue}
-                        onChange={(e) => setLaborValue(e.target.value)}
-                        className="w-24 rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-orange-400"
-                      />
+              >
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="mb-2 text-[11px] font-semibold uppercase text-slate-400">
+                      Labor
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setLaborMode("none")}
+                        className={pillClass(laborMode === "none")}
+                      >
+                        None
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLaborMode("fixed")}
+                        className={pillClass(laborMode === "fixed")}
+                      >
+                        Fixed $
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLaborMode("percent_parts")}
+                        className={pillClass(laborMode === "percent_parts")}
+                      >
+                        % of parts
+                      </button>
                     </div>
-                  )}
+                    {laborMode !== "none" && (
+                      <div className="mt-2 flex items-center gap-1">
+                        <span className="text-xs text-slate-400">
+                          {laborMode === "fixed" ? "$" : "%"}
+                        </span>
+                        <input
+                          type="number"
+                          value={laborValue}
+                          onChange={(e) => setLaborValue(e.target.value)}
+                          className="w-24 rounded border border-slate-200 bg-white px-2 py-1 text-sm outline-none focus:border-orange-400"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-[11px] font-semibold uppercase text-slate-400">
+                      Profit Margin
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setMarginMode("none")}
+                        className={pillClass(marginMode === "none")}
+                      >
+                        None
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMarginMode("fixed")}
+                        className={pillClass(marginMode === "fixed")}
+                      >
+                        Fixed $
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMarginMode("percent_total")}
+                        className={pillClass(marginMode === "percent_total")}
+                      >
+                        % of total
+                      </button>
+                    </div>
+                    {marginMode !== "none" && (
+                      <div className="mt-2 flex items-center gap-1">
+                        <span className="text-xs text-slate-400">
+                          {marginMode === "fixed" ? "$" : "%"}
+                        </span>
+                        <input
+                          type="number"
+                          value={marginValue}
+                          onChange={(e) => setMarginValue(e.target.value)}
+                          className="w-24 rounded border border-slate-200 bg-white px-2 py-1 text-sm outline-none focus:border-orange-400"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
-                  <p className="mb-2 text-[11px] font-semibold uppercase text-slate-400">
-                    Profit Margin
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setMarginMode("none")}
-                      className={pillClass(marginMode === "none")}
-                    >
-                      None
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMarginMode("fixed")}
-                      className={pillClass(marginMode === "fixed")}
-                    >
-                      Fixed $
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMarginMode("percent_total")}
-                      className={pillClass(marginMode === "percent_total")}
-                    >
-                      % of total
-                    </button>
-                  </div>
-                  {marginMode !== "none" && (
-                    <div className="mt-2 flex items-center gap-1">
-                      <span className="text-xs text-slate-400">
-                        {marginMode === "fixed" ? "$" : "%"}
-                      </span>
-                      <input
-                        type="number"
-                        value={marginValue}
-                        onChange={(e) => setMarginValue(e.target.value)}
-                        className="w-24 rounded border border-slate-200 px-2 py-1 text-sm outline-none focus:border-orange-400"
-                      />
-                    </div>
-                  )}
+                  <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
+                    Notes
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Additional notes or observations..."
+                    className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
+                  />
                 </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
-                  Notes
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  placeholder="Additional notes or observations..."
-                  className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
-                />
-              </div>
+              </TicketSummarySection>
             </div>
 
             {submitError && (
