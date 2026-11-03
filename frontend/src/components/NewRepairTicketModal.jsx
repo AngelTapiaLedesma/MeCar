@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Search, Plus, UserPlus, FileText, Calendar, Eye, EyeOff } from "lucide-react";
 import AddClientModal from "./AddClientModal";
 import AddVehicleModal from "./AddVehicleModal";
@@ -39,19 +39,37 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
 
+  const clientRef = useRef(null);
+  const vehicleRef = useRef(null);
+
   const [date, setDate] = useState(todayIso());
   const [technician, setTechnician] = useState(TECHNICIANS[0]);
 
   const [ticketItems, setTicketItems] = useState([]);
 
-  // Doble costo para mano de obra
+  // Doble costo y modo para mano de obra
   const [laborCost, setLaborCost] = useState("");
   const [laborPrice, setLaborPrice] = useState("");
+  const [laborMode, setLaborMode] = useState("fixed"); // 'fixed' | 'percentage'
+  const [laborMarginPct, setLaborMarginPct] = useState("20");
 
   const [notes, setNotes] = useState("");
   const [showCosts, setShowCosts] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (clientRef.current && !clientRef.current.contains(e.target)) {
+        setShowClientResults(false);
+      }
+      if (vehicleRef.current && !vehicleRef.current.contains(e.target)) {
+        setShowVehicleResults(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -90,8 +108,12 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
     0
   );
 
-  const laborPriceVal = Number(laborPrice) || 0;
   const laborCostVal = Number(laborCost) || 0;
+  const laborMarginVal = Number(laborMarginPct) || 0;
+  const laborPriceVal =
+    laborMode === "percentage"
+      ? laborCostVal * (1 + laborMarginVal / 100)
+      : Number(laborPrice) || 0;
 
   const total = partsPriceTotal + laborPriceVal;
   const totalCost = partsCostTotal + laborCostVal;
@@ -240,7 +262,7 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
                   Client & Vehicle
                 </p>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="relative">
+                  <div ref={clientRef} className="relative">
                     <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
                       Client
                     </label>
@@ -258,7 +280,7 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
                         className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-orange-400"
                       />
                     </div>
-                    {showClientResults && clientQuery && !selectedClient && (
+                    {showClientResults && !selectedClient && (
                       <div className="absolute z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
                         {filteredClients.map((c) => (
                           <button
@@ -286,7 +308,7 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
                     </button>
                   </div>
 
-                  <div className="relative">
+                  <div ref={vehicleRef} className="relative">
                     <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
                       Vehicle
                     </label>
@@ -304,7 +326,7 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
                         className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-orange-400"
                       />
                     </div>
-                    {showVehicleResults && vehicleQuery && !selectedVehicle && (
+                    {showVehicleResults && !selectedVehicle && (
                       <div className="absolute z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
                         {filteredVehicles.map((v) => (
                           <button
@@ -373,11 +395,40 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
                 onUpdateCost={handleUpdateItemCost}
                 onRemove={handleRemoveItem}
               >
-                {/* Mano de obra con doble costo */}
+                {/* Mano de obra con doble costo y modo fijo/porcentual */}
                 <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Labor (Mano de obra)
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Labor (Mano de obra)
+                    </p>
+                    <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setLaborMode("fixed")}
+                        className={[
+                          "rounded-md px-2 py-1 font-medium transition-colors",
+                          laborMode === "fixed"
+                            ? "bg-white text-slate-900 shadow-sm"
+                            : "text-slate-500 hover:text-slate-900",
+                        ].join(" ")}
+                      >
+                        Precio Fijo ($)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLaborMode("percentage")}
+                        className={[
+                          "rounded-md px-2 py-1 font-medium transition-colors",
+                          laborMode === "percentage"
+                            ? "bg-white text-orange-600 shadow-sm"
+                            : "text-slate-500 hover:text-slate-900",
+                        ].join(" ")}
+                      >
+                        Margen (%)
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     {showCosts && (
                       <div>
@@ -394,21 +445,50 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
                         />
                       </div>
                     )}
-                    <div className={!showCosts ? "col-span-2" : ""}>
-                      <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
-                        Precio Cliente ($)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={laborPrice}
-                        onChange={(e) => setLaborPrice(e.target.value)}
-                        placeholder="0.00"
-                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
-                      />
-                    </div>
+
+                    {laborMode === "percentage" ? (
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
+                          Margen Ganancia (%)
+                        </label>
+                        <input
+                          type="number"
+                          step="1"
+                          value={laborMarginPct}
+                          onChange={(e) => setLaborMarginPct(e.target.value)}
+                          placeholder="20"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
+                        />
+                      </div>
+                    ) : (
+                      <div className={!showCosts ? "col-span-2" : ""}>
+                        <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
+                          Precio Cliente ($)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={laborPrice}
+                          onChange={(e) => setLaborPrice(e.target.value)}
+                          placeholder="0.00"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
+                        />
+                      </div>
+                    )}
                   </div>
-                  {showCosts && laborCost !== "" && laborPrice !== "" && (
+
+                  {laborMode === "percentage" && (
+                    <div className="flex items-center justify-between rounded-lg bg-orange-50/50 px-3 py-2 text-xs">
+                      <span className="text-slate-600">
+                        Precio calculado ({laborMarginPct}% sobre costo):
+                      </span>
+                      <span className="font-bold text-orange-600">
+                        ${laborPriceVal.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  {showCosts && laborCost !== "" && (
                     <p className="text-xs font-medium text-emerald-600">
                       Ganancia mano de obra: +${(laborPriceVal - laborCostVal).toFixed(2)}
                     </p>

@@ -254,8 +254,7 @@ export default function VehicleDetailModal({ open, onClose, vehicle }) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  const vehicleStr = `${vehicle.make} ${vehicle.model} ${vehicle.plate}`;
-                  navigate(`/history?vehicle=${encodeURIComponent(vehicleStr)}`);
+                  navigate(`/history?vehicle=${encodeURIComponent(vehicle.plate)}`);
                   onClose();
                 }}
                 className="flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-600 hover:bg-orange-100"

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, Search } from "lucide-react";
 import Topbar from "../components/Topbar";
 import RegisterVehicleModal from "../components/RegisterVehicleModal";
 import EditVehicleModal from "../components/EditVehicleModal";
@@ -100,6 +100,7 @@ export default function Vehicles() {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [query, setQuery] = useState("");
   const [registerOpen, setRegisterOpen] = useState(false);
   const [editVehicle, setEditVehicle] = useState(null);
   const [detailVehicle, setDetailVehicle] = useState(null);
@@ -116,6 +117,11 @@ export default function Vehicles() {
   useEffect(() => {
     loadVehicles();
   }, []);
+
+  const filteredVehicles = vehicles.filter((v) => {
+    const searchable = `${v.make} ${v.model} ${v.plate} ${v.vin || ""} ${v.clientName || ""}`.toLowerCase();
+    return searchable.includes(query.toLowerCase());
+  });
 
   return (
     <>
@@ -139,6 +145,16 @@ export default function Vehicles() {
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white">
+          <div className="flex items-center gap-2 border-b border-slate-100 px-6 py-4">
+            <Search className="h-4 w-4 text-slate-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search vehicles by plate, make, model, VIN or owner..."
+              className="w-full text-sm text-slate-700 outline-none placeholder:text-slate-400"
+            />
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -166,14 +182,16 @@ export default function Vehicles() {
                     </td>
                   </tr>
                 )}
-                {!loading && !error && vehicles.length === 0 && (
+                {!loading && !error && filteredVehicles.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-400">
-                      No hay vehículos todavía. Da clic en "Register Vehicle".
+                      {vehicles.length === 0
+                        ? 'No hay vehículos todavía. Da clic en "Register Vehicle".'
+                        : `No vehicles match "${query}".`}
                     </td>
                   </tr>
                 )}
-                {!loading && !error && vehicles.map((v) => (
+                {!loading && !error && filteredVehicles.map((v) => (
                   <tr
                     key={v.id}
                     onClick={() => setDetailVehicle(v)}

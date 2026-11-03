@@ -178,8 +178,9 @@ export default function History() {
     if (contextFilter) {
       if (contextFilter.type === "client" && t.client !== contextFilter.value) return false;
       if (contextFilter.type === "vehicle") {
-        const vehicleString = `${t.vehicle} ${t.plate}`;
-        if (vehicleString !== contextFilter.value) return false;
+        const matchesPlate = t.plate.toLowerCase() === contextFilter.value.toLowerCase();
+        const matchesString = `${t.vehicle} ${t.plate}`.toLowerCase().includes(contextFilter.value.toLowerCase());
+        if (!matchesPlate && !matchesString) return false;
       }
     }
 
