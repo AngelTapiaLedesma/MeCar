@@ -33,6 +33,7 @@ const createTicket = async (req, res) => {
         FechaServicio,
         Items = [],
         CostoManoObra = 0,
+        CostoManoObraTaller = null,
         MargenGanancia = 0,
         Notas,
     } = req.body;
@@ -55,7 +56,7 @@ const createTicket = async (req, res) => {
         const infoResult = await new sql.Request(transaction)
             .input('IdVehiculo', sql.Int, IdVehiculo)
             .query(`
-                SELECT v.Marca, v.Modelo, v.Anio, v.Placas, c.NombreCompleto AS ClienteNombre
+                SELECT v.Marca, v.Modelo, v.Anio, v.Placas, v.VIN, c.NombreCompleto AS ClienteNombre
                 FROM Vehiculos v
                 INNER JOIN Clientes c ON c.IdCliente = v.IdCliente
                 WHERE v.IdVehiculo = @IdVehiculo
@@ -69,6 +70,7 @@ const createTicket = async (req, res) => {
         const info = infoResult.recordset[0];
         const VehiculoSnapshot = `${info.Marca} ${info.Modelo} ${info.Anio} — ${info.Placas}`;
         const ClienteSnapshot = info.ClienteNombre;
+        const VINSnapshot = info.VIN || null;
 
         const servicioResult = await new sql.Request(transaction)
             .input('IdVehiculo', sql.Int, IdVehiculo)
@@ -76,17 +78,19 @@ const createTicket = async (req, res) => {
             .input('Descripcion', sql.NVarChar, Notas || '')
             .input('CostoPiezas', sql.Decimal(10, 2), CostoPiezas)
             .input('CostoManoObra', sql.Decimal(10, 2), CostoManoObra)
+            .input('CostoManoObraTaller', sql.Decimal(10, 2), CostoManoObraTaller)
             .input('MargenGanancia', sql.Decimal(10, 2), MargenGanancia)
             .input('Tecnico', sql.NVarChar, Tecnico)
             .input('FechaServicio', sql.DateTime, FechaServicio ? new Date(FechaServicio) : new Date())
             .input('VehiculoSnapshot', sql.NVarChar, VehiculoSnapshot)
             .input('ClienteSnapshot', sql.NVarChar, ClienteSnapshot)
+            .input('VINSnapshot', sql.NVarChar, VINSnapshot)
             .query(`
                 INSERT INTO HistorialServicios
-                    (IdVehiculo, Titulo, Descripcion, CostoPiezas, CostoManoObra, MargenGanancia, Tecnico, FechaServicio, VehiculoSnapshot, ClienteSnapshot)
+                    (IdVehiculo, Titulo, Descripcion, CostoPiezas, CostoManoObra, CostoManoObraTaller, MargenGanancia, Tecnico, FechaServicio, VehiculoSnapshot, ClienteSnapshot, VINSnapshot)
                 OUTPUT INSERTED.IdServicio
                 VALUES
-                    (@IdVehiculo, @Titulo, @Descripcion, @CostoPiezas, @CostoManoObra, @MargenGanancia, @Tecnico, @FechaServicio, @VehiculoSnapshot, @ClienteSnapshot)
+                    (@IdVehiculo, @Titulo, @Descripcion, @CostoPiezas, @CostoManoObra, @CostoManoObraTaller, @MargenGanancia, @Tecnico, @FechaServicio, @VehiculoSnapshot, @ClienteSnapshot, @VINSnapshot)
             `);
 
         const idServicio = servicioResult.recordset[0].IdServicio;
@@ -96,11 +100,12 @@ const createTicket = async (req, res) => {
                 .input('IdServicio', sql.Int, idServicio)
                 .input('Nombre', sql.NVarChar, item.Nombre)
                 .input('Precio', sql.Decimal(10, 2), item.Precio)
+                .input('Costo', sql.Decimal(10, 2), item.Costo != null ? item.Costo : null)
                 .input('Origen', sql.NVarChar, item.Origen || 'custom')
                 .input('IdCatalogoItem', sql.Int, item.IdCatalogoItem || null)
                 .query(`
-                    INSERT INTO ServicioItems (IdServicio, Nombre, Precio, Origen, IdCatalogoItem)
-                    VALUES (@IdServicio, @Nombre, @Precio, @Origen, @IdCatalogoItem)
+                    INSERT INTO ServicioItems (IdServicio, Nombre, Precio, Costo, Origen, IdCatalogoItem)
+                    VALUES (@IdServicio, @Nombre, @Precio, @Costo, @Origen, @IdCatalogoItem)
                 `);
         }
 
@@ -122,6 +127,7 @@ const updateTicket = async (req, res) => {
         FechaServicio,
         Items = [],
         CostoManoObra = 0,
+        CostoManoObraTaller = null,
         MargenGanancia = 0,
         Notas,
         Estatus,
@@ -164,6 +170,7 @@ const updateTicket = async (req, res) => {
             .input('Descripcion', sql.NVarChar, Notas || '')
             .input('CostoPiezas', sql.Decimal(10, 2), CostoPiezas)
             .input('CostoManoObra', sql.Decimal(10, 2), CostoManoObra)
+            .input('CostoManoObraTaller', sql.Decimal(10, 2), CostoManoObraTaller)
             .input('MargenGanancia', sql.Decimal(10, 2), MargenGanancia)
             .input('Estatus', sql.NVarChar, nuevoEstatus)
             .query(`
@@ -174,6 +181,7 @@ const updateTicket = async (req, res) => {
                     Descripcion = @Descripcion,
                     CostoPiezas = @CostoPiezas,
                     CostoManoObra = @CostoManoObra,
+                    CostoManoObraTaller = @CostoManoObraTaller,
                     MargenGanancia = @MargenGanancia,
                     Estatus = @Estatus
                 WHERE IdServicio = @IdServicio
@@ -189,11 +197,12 @@ const updateTicket = async (req, res) => {
                 .input('IdServicio', sql.Int, id)
                 .input('Nombre', sql.NVarChar, item.Nombre)
                 .input('Precio', sql.Decimal(10, 2), item.Precio)
+                .input('Costo', sql.Decimal(10, 2), item.Costo != null ? item.Costo : null)
                 .input('Origen', sql.NVarChar, item.Origen || 'custom')
                 .input('IdCatalogoItem', sql.Int, item.IdCatalogoItem || null)
                 .query(`
-                    INSERT INTO ServicioItems (IdServicio, Nombre, Precio, Origen, IdCatalogoItem)
-                    VALUES (@IdServicio, @Nombre, @Precio, @Origen, @IdCatalogoItem)
+                    INSERT INTO ServicioItems (IdServicio, Nombre, Precio, Costo, Origen, IdCatalogoItem)
+                    VALUES (@IdServicio, @Nombre, @Precio, @Costo, @Origen, @IdCatalogoItem)
                 `);
         }
 

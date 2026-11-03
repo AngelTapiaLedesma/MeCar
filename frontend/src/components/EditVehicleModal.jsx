@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
-import { updateVehicle } from "../api/vehicles";
+import { X, AlertCircle } from "lucide-react";
+import { updateVehicle, checkVin } from "../api/vehicles";
 
-const emptyForm = { plate: "", make: "", model: "", year: "", color: "", mileage: "" };
+const emptyForm = { plate: "", vin: "", make: "", model: "", year: "", color: "", mileage: "" };
 
 export default function EditVehicleModal({ open, onClose, vehicle, onUpdated }) {
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
+  const [vinWarning, setVinWarning] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
@@ -14,6 +15,7 @@ export default function EditVehicleModal({ open, onClose, vehicle, onUpdated }) 
     if (open && vehicle) {
       setForm({
         plate: vehicle.plate || "",
+        vin: vehicle.vin || "",
         make: vehicle.make || "",
         model: vehicle.model || "",
         year: vehicle.year || "",
@@ -21,14 +23,34 @@ export default function EditVehicleModal({ open, onClose, vehicle, onUpdated }) 
         mileage: vehicle.mileage ?? "",
       });
       setErrors({});
+      setVinWarning(null);
       setSubmitError(null);
     }
   }, [open, vehicle]);
 
   if (!open || !vehicle) return null;
 
-  function update(field, value) {
-    setForm((f) => ({ ...f, [field]: value }));
+  async function update(field, value) {
+    const updatedForm = { ...form, [field]: value };
+    setForm(updatedForm);
+
+    if (field === "vin") {
+      const trimmed = value.trim();
+      if (trimmed.length > 0 && trimmed.length !== 17) {
+        setVinWarning("Aviso: El VIN estándar tiene 17 caracteres.");
+      } else {
+        setVinWarning(null);
+      }
+
+      if (trimmed) {
+        try {
+          const res = await checkVin(trimmed, vehicle.id);
+          if (res.exists) {
+            setVinWarning(`Aviso: Este serial ya está registrado en el vehículo ${res.vehicle} de ${res.client}.`);
+          }
+        } catch {}
+      }
+    }
   }
 
   async function handleSubmit(e) {
@@ -47,6 +69,7 @@ export default function EditVehicleModal({ open, onClose, vehicle, onUpdated }) 
     try {
       await updateVehicle(vehicle.id, {
         plate: form.plate.trim(),
+        vin: form.vin.trim() || undefined,
         make: form.make.trim(),
         model: form.model.trim(),
         year: Number(form.year) || undefined,
@@ -131,6 +154,24 @@ export default function EditVehicleModal({ open, onClose, vehicle, onUpdated }) 
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              Número de Serie / VIN
+            </label>
+            <input
+              value={form.vin}
+              onChange={(e) => update("vin", e.target.value)}
+              placeholder="Ej. 1HGCR2F8... (hasta 30 chars)"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
+            />
+            {vinWarning && (
+              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>{vinWarning}</span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

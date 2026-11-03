@@ -14,7 +14,7 @@ import {
 // en <TicketSummarySection />, un bloque aparte, para que se lea como
 // "lo que va a quedar" y no como parte de "lo que estoy agregando".
 //
-// onAdd(item): item = { id, name, price, origin: 'catalogo'|'custom', catalogItemId }
+// onAdd(item): item = { id, name, price, cost, origin: 'catalogo'|'custom', catalogItemId }
 // readOnly: ticket cerrado o en modo "solo ver" — no hay nada que agregar,
 // así que el selector completo se oculta.
 export default function RepairItemsSection({ onAdd, readOnly = false }) {
@@ -31,6 +31,7 @@ export default function RepairItemsSection({ onAdd, readOnly = false }) {
 
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState("");
+  const [customCost, setCustomCost] = useState("");
   const [confirmDeleteSectionId, setConfirmDeleteSectionId] = useState(null);
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function RepairItemsSection({ onAdd, readOnly = false }) {
       id: `t-${Date.now()}-${Math.random()}`,
       name: catalogItem.Nombre,
       price: Number(catalogItem.PrecioBase),
+      cost: Number(catalogItem.CostoBase) || 0,
       origin: "catalogo",
       catalogItemId: catalogItem.IdItem,
     });
@@ -68,11 +70,13 @@ export default function RepairItemsSection({ onAdd, readOnly = false }) {
       id: `t-${Date.now()}-${Math.random()}`,
       name: customName.trim(),
       price: Number(customPrice) || 0,
+      cost: Number(customCost) || 0,
       origin: "custom",
       catalogItemId: null,
     });
     setCustomName("");
     setCustomPrice("");
+    setCustomCost("");
   }
 
   // ---------- Modo edición del catálogo ----------
@@ -125,7 +129,7 @@ export default function RepairItemsSection({ onAdd, readOnly = false }) {
               ...s,
               Items: [
                 ...s.Items,
-                { IdItem: `new-${Date.now()}`, Nombre: "", PrecioBase: 0, isNew: true },
+                { IdItem: `new-${Date.now()}`, Nombre: "", PrecioBase: 0, CostoBase: 0, isNew: true },
               ],
             }
           : s
@@ -214,7 +218,8 @@ export default function RepairItemsSection({ onAdd, readOnly = false }) {
             await createCatalogItem(
               realSectionId,
               item.Nombre.trim(),
-              Number(item.PrecioBase) || 0
+              Number(item.PrecioBase) || 0,
+              Number(item.CostoBase) || 0
             );
           }
         }
@@ -227,12 +232,14 @@ export default function RepairItemsSection({ onAdd, readOnly = false }) {
           if (!original) continue;
           if (
             original.Nombre !== item.Nombre ||
-            Number(original.PrecioBase) !== Number(item.PrecioBase)
+            Number(original.PrecioBase) !== Number(item.PrecioBase) ||
+            Number(original.CostoBase || 0) !== Number(item.CostoBase || 0)
           ) {
             await updateCatalogItem(
               item.IdItem,
               item.Nombre,
-              Number(item.PrecioBase) || 0
+              Number(item.PrecioBase) || 0,
+              Number(item.CostoBase) || 0
             );
           }
         }
@@ -373,11 +380,21 @@ export default function RepairItemsSection({ onAdd, readOnly = false }) {
                         />
                         <input
                           type="number"
+                          value={item.CostoBase}
+                          onChange={(e) =>
+                            updateDraftItem(s.IdSeccion, item.IdItem, "CostoBase", e.target.value)
+                          }
+                          placeholder="Costo"
+                          className="w-20 rounded border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-orange-400"
+                        />
+                        <input
+                          type="number"
                           value={item.PrecioBase}
                           onChange={(e) =>
                             updateDraftItem(s.IdSeccion, item.IdItem, "PrecioBase", e.target.value)
                           }
-                          className="w-24 rounded border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-orange-400"
+                          placeholder="Precio"
+                          className="w-20 rounded border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-orange-400"
                         />
                         <button
                           type="button"
@@ -457,11 +474,18 @@ export default function RepairItemsSection({ onAdd, readOnly = false }) {
           className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
         />
         <input
+          value={customCost}
+          onChange={(e) => setCustomCost(e.target.value)}
+          placeholder="Cost"
+          inputMode="decimal"
+          className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
+        />
+        <input
           value={customPrice}
           onChange={(e) => setCustomPrice(e.target.value)}
-          placeholder="$0.00"
+          placeholder="Price"
           inputMode="decimal"
-          className="w-24 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
+          className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
         />
         <button
           type="button"

@@ -58,7 +58,7 @@ const deleteSeccion = async (req, res) => {
 };
 
 const createItem = async (req, res) => {
-    const { IdSeccion, Nombre, PrecioBase } = req.body;
+    const { IdSeccion, Nombre, PrecioBase, CostoBase } = req.body;
     if (!IdSeccion || !Nombre || !Nombre.trim()) {
         return res.status(400).json({ message: 'IdSeccion y Nombre son obligatorios.' });
     }
@@ -68,10 +68,11 @@ const createItem = async (req, res) => {
             .input('IdSeccion', sql.Int, IdSeccion)
             .input('Nombre', sql.NVarChar, Nombre.trim())
             .input('PrecioBase', sql.Decimal(10, 2), PrecioBase || 0)
+            .input('CostoBase', sql.Decimal(10, 2), CostoBase || 0)
             .query(`
-                INSERT INTO CatalogoItems (IdSeccion, Nombre, PrecioBase)
+                INSERT INTO CatalogoItems (IdSeccion, Nombre, PrecioBase, CostoBase)
                 OUTPUT INSERTED.IdItem
-                VALUES (@IdSeccion, @Nombre, @PrecioBase)
+                VALUES (@IdSeccion, @Nombre, @PrecioBase, @CostoBase)
             `);
         res.status(201).json({ IdItem: result.recordset[0].IdItem });
     } catch (error) {
@@ -79,21 +80,22 @@ const createItem = async (req, res) => {
     }
 };
 
-// Actualiza el nombre/precio de REFERENCIA en el catálogo.
+// Actualiza el nombre/precio/costo de REFERENCIA en el catálogo.
 // OJO: esto nunca toca los tickets ya creados — cada ticket ya tiene su
 // propia copia del precio guardada en ServicioItems.
 const updateItem = async (req, res) => {
     const { id } = req.params;
-    const { Nombre, PrecioBase } = req.body;
+    const { Nombre, PrecioBase, CostoBase } = req.body;
     try {
         const pool = await getConnection();
         await pool.request()
             .input('IdItem', sql.Int, id)
             .input('Nombre', sql.NVarChar, Nombre)
             .input('PrecioBase', sql.Decimal(10, 2), PrecioBase)
+            .input('CostoBase', sql.Decimal(10, 2), CostoBase || 0)
             .query(`
                 UPDATE CatalogoItems
-                SET Nombre = @Nombre, PrecioBase = @PrecioBase
+                SET Nombre = @Nombre, PrecioBase = @PrecioBase, CostoBase = @CostoBase
                 WHERE IdItem = @IdItem
             `);
         res.json({ message: 'Item actualizado.' });

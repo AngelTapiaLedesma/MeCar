@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   X,
   Car,
@@ -11,6 +12,7 @@ import {
   ChevronRight,
   Repeat,
   CalendarDays,
+  History as HistoryIcon,
 } from "lucide-react";
 import {
   fetchReminders,
@@ -67,6 +69,7 @@ const emptyForm = {
 };
 
 export default function VehicleDetailModal({ open, onClose, vehicle }) {
+  const navigate = useNavigate();
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -243,14 +246,30 @@ export default function VehicleDetailModal({ open, onClose, vehicle }) {
                 <p className="text-xs text-slate-400">
                   {vehicle.plate} · {vehicle.clientName}
                 </p>
+                {vehicle.vin && (
+                  <p className="mt-0.5 text-xs font-mono text-slate-500">VIN: {vehicle.vin}</p>
+                )}
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const vehicleStr = `${vehicle.make} ${vehicle.model} ${vehicle.plate}`;
+                  navigate(`/history?vehicle=${encodeURIComponent(vehicleStr)}`);
+                  onClose();
+                }}
+                className="flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-600 hover:bg-orange-100"
+              >
+                <HistoryIcon className="h-3.5 w-3.5" />
+                Ver Historial
+              </button>
+              <button
+                onClick={onClose}
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-6 px-6 py-5">

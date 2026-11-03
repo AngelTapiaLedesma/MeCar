@@ -24,7 +24,7 @@ export async function deleteSection(id) {
   return res.json();
 }
 
-export async function createCatalogItem(idSeccion, nombre, precioBase) {
+export async function createCatalogItem(idSeccion, nombre, precioBase, costoBase) {
   const res = await fetch(`${API_URL}/catalogo/items`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -32,17 +32,22 @@ export async function createCatalogItem(idSeccion, nombre, precioBase) {
       IdSeccion: idSeccion,
       Nombre: nombre,
       PrecioBase: precioBase,
+      CostoBase: costoBase,
     }),
   });
   if (!res.ok) throw new Error("No se pudo crear el item.");
   return res.json();
 }
 
-export async function updateCatalogItem(id, nombre, precioBase) {
+export async function updateCatalogItem(id, nombre, precioBase, costoBase) {
   const res = await fetch(`${API_URL}/catalogo/items/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ Nombre: nombre, PrecioBase: precioBase }),
+    body: JSON.stringify({
+      Nombre: nombre,
+      PrecioBase: precioBase,
+      CostoBase: costoBase,
+    }),
   });
   if (!res.ok) throw new Error("No se pudo actualizar el item.");
   return res.json();

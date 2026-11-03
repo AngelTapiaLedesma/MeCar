@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 
-const emptyVehicle = { make: "", model: "", year: "", plate: "", color: "", mileage: "" };
+const emptyVehicle = { make: "", model: "", year: "", plate: "", vin: "", color: "", mileage: "" };
 const emptyForm = { name: "", phone: "", email: "", address: "", description: "" };
 
 export default function AddClientModal({ open, onClose, onSave }) {
@@ -57,6 +57,7 @@ export default function AddClientModal({ open, onClose, onSave }) {
         model: v.model.trim(),
         year: Number(v.year) || undefined,
         plate: v.plate.trim(),
+        vin: v.vin.trim() || undefined,
         color: v.color.trim(),
         mileage: Number(v.mileage) || undefined,
       }));
@@ -211,6 +212,12 @@ export default function AddClientModal({ open, onClose, onSave }) {
                       onChange={(e) => updateVehicle(i, "plate", e.target.value)}
                       placeholder="Placa"
                       className="rounded-md border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-orange-400"
+                    />
+                    <input
+                      value={v.vin}
+                      onChange={(e) => updateVehicle(i, "vin", e.target.value)}
+                      placeholder="VIN/Serial"
+                      className="col-span-2 rounded-md border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-orange-400"
                     />
                     <input
                       value={v.color}

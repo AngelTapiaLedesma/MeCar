@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Lock, Car, User, Calendar } from "lucide-react";
+import { X, Lock, Car, User, Calendar, Eye, EyeOff } from "lucide-react";
 import { updateTicket } from "../api/history";
 import RepairItemsSection from "./RepairItemsSection";
 import TicketSummarySection from "./TicketSummarySection";
@@ -13,9 +13,10 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
   const [date, setDate] = useState("");
   const [technician, setTechnician] = useState(TECHNICIANS[0]);
   const [items, setItems] = useState([]);
-  const [laborCost, setLaborCost] = useState("0");
-  const [margin, setMargin] = useState("0");
+  const [laborCost, setLaborCost] = useState("");
+  const [laborPrice, setLaborPrice] = useState("0");
   const [notes, setNotes] = useState("");
+  const [showCosts, setShowCosts] = useState(true);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -27,8 +28,8 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
       setDate(ticket.date ? String(ticket.date).slice(0, 10) : "");
       setTechnician(ticket.tech || TECHNICIANS[0]);
       setItems(ticket.items.map((i) => ({ ...i })));
-      setLaborCost(String(ticket.laborCost ?? 0));
-      setMargin(String(ticket.margin ?? 0));
+      setLaborPrice(String(ticket.laborCost ?? 0));
+      setLaborCost(ticket.laborCostShop != null ? String(ticket.laborCostShop) : "");
       setNotes(ticket.notes || "");
       setSaveError(null);
       setConfirmClose(false);
@@ -39,8 +40,21 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
 
   const isClosed = ticket.status === "Closed";
   const readOnly = isClosed || !editable;
-  const partsSubtotal = items.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
-  const total = partsSubtotal + (Number(laborCost) || 0) + (Number(margin) || 0);
+
+  const partsPrice = items.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
+  const partsCost = items.reduce((sum, i) => {
+    const c = i.cost != null ? Number(i.cost) : 0;
+    return sum + c;
+  }, 0);
+
+  const laborPriceVal = Number(laborPrice) || 0;
+  const laborCostVal = laborCost !== "" ? Number(laborCost) : 0;
+
+  const total = partsPrice + laborPriceVal;
+  const totalCost = partsCost + laborCostVal;
+  const totalProfit = total - totalCost;
+
+  const hasAnyCost = items.some((i) => i.cost != null) || laborCost !== "";
 
   function handleAddItem(item) {
     setItems((prev) => [...prev, item]);
@@ -49,6 +63,12 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
   function handleUpdateItemPrice(id, value) {
     setItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, price: Number(value) || 0 } : i))
+    );
+  }
+
+  function handleUpdateItemCost(id, value) {
+    setItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, cost: value === "" ? null : Number(value) } : i))
     );
   }
 
@@ -63,11 +83,13 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
       Items: items.map((i) => ({
         Nombre: i.name,
         Precio: i.price,
+        Costo: i.cost,
         Origen: i.origin,
         IdCatalogoItem: i.catalogItemId,
       })),
-      CostoManoObra: Number(laborCost) || 0,
-      MargenGanancia: Number(margin) || 0,
+      CostoManoObra: laborPriceVal,
+      CostoManoObraTaller: laborCost !== "" ? laborCostVal : null,
+      MargenGanancia: 0,
       Notas: notes,
       Estatus: estatus,
     };
@@ -137,21 +159,36 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
                 )}
               </span>
             </div>
-            <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-400">
               <span className="flex items-center gap-1">
                 <Car className="h-3 w-3" /> {ticket.plate}
               </span>
+              {ticket.vin && (
+                <span className="font-mono text-slate-500">VIN: {ticket.vin}</span>
+              )}
               <span className="flex items-center gap-1">
                 <User className="h-3 w-3" /> {ticket.client}
               </span>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => setShowCosts((v) => !v)}
+                className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                title={showCosts ? "Ocultar costos del taller" : "Mostrar costos del taller"}
+              >
+                {showCosts ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         <div className="space-y-6 px-6 py-5">
@@ -207,40 +244,59 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
           <TicketSummarySection
             items={items}
             onUpdatePrice={handleUpdateItemPrice}
+            onUpdateCost={handleUpdateItemCost}
             onRemove={handleRemoveItem}
             readOnly={readOnly}
           >
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
-                  Labor ($)
-                </label>
-                {readOnly ? (
-                  <p className="text-sm text-slate-700">${Number(laborCost).toFixed(2)}</p>
-                ) : (
-                  <input
-                    type="number"
-                    value={laborCost}
-                    onChange={(e) => setLaborCost(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
-                  />
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Labor (Mano de obra)
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                {showCosts && (
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
+                      Costo Taller ($)
+                    </label>
+                    {readOnly ? (
+                      <p className="text-sm text-slate-700">
+                        {laborCost !== "" ? `$${laborCostVal.toFixed(2)}` : "—"}
+                      </p>
+                    ) : (
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={laborCost}
+                        onChange={(e) => setLaborCost(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
+                      />
+                    )}
+                  </div>
                 )}
+                <div className={!showCosts ? "col-span-2" : ""}>
+                  <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
+                    Precio Cliente ($)
+                  </label>
+                  {readOnly ? (
+                    <p className="text-sm text-slate-700">${laborPriceVal.toFixed(2)}</p>
+                  ) : (
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={laborPrice}
+                      onChange={(e) => setLaborPrice(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
+                    />
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
-                  Margin ($)
-                </label>
-                {readOnly ? (
-                  <p className="text-sm text-slate-700">${Number(margin).toFixed(2)}</p>
-                ) : (
-                  <input
-                    type="number"
-                    value={margin}
-                    onChange={(e) => setMargin(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
-                  />
-                )}
-              </div>
+              {showCosts && laborCost !== "" && (
+                <p className="text-xs font-medium text-emerald-600">
+                  Ganancia mano de obra: +${(laborPriceVal - laborCostVal).toFixed(2)}
+                </p>
+              )}
             </div>
 
             <div>
@@ -260,12 +316,17 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
             </div>
 
             <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-              <div className="text-xs text-slate-400">
-                Parts ${partsSubtotal.toFixed(2)} + Labor $
-                {(Number(laborCost) || 0).toFixed(2)} + Margin $
-                {(Number(margin) || 0).toFixed(2)}
+              <div className="text-xs text-slate-500">
+                {showCosts && hasAnyCost && (
+                  <span className="font-medium text-emerald-600">
+                    Ganancia neta: +${totalProfit.toFixed(2)}
+                  </span>
+                )}
               </div>
-              <p className="text-lg font-bold text-orange-500">${total.toFixed(2)}</p>
+              <div className="text-right">
+                <p className="text-[10px] uppercase text-slate-400">Total Cliente</p>
+                <p className="text-lg font-bold text-orange-500">${total.toFixed(2)}</p>
+              </div>
             </div>
           </TicketSummarySection>
 

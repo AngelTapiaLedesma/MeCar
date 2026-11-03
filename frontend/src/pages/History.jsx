@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Lock, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Plus, Lock, MoreVertical, Pencil, Trash2, Search, X } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import Topbar from "../components/Topbar";
 import NewRepairTicketModal from "../components/NewRepairTicketModal";
 import TicketDetailModal from "../components/TicketDetailModal";
@@ -106,12 +107,31 @@ function RowMenu({ ticket, onEdit, onDeleted }) {
 }
 
 export default function History() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [detailTicket, setDetailTicket] = useState(null);
   const [detailEditable, setDetailEditable] = useState(false);
+
+  // Filtros
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all"); // 'all' | 'open' | 'closed'
+  const [contextFilter, setContextFilter] = useState(null); // { type: 'client'|'vehicle', value: string, label: string }
+
+  useEffect(() => {
+    // Leer filtros contextuales desde URL
+    const clientFilter = searchParams.get("client");
+    const vehicleFilter = searchParams.get("vehicle");
+
+    if (clientFilter) {
+      setContextFilter({ type: "client", value: clientFilter, label: `Cliente: ${clientFilter}` });
+    } else if (vehicleFilter) {
+      setContextFilter({ type: "vehicle", value: vehicleFilter, label: `Vehículo: ${vehicleFilter}` });
+    }
+  }, [searchParams]);
 
   function loadHistory() {
     setLoading(true);
@@ -136,6 +156,36 @@ export default function History() {
     setDetailEditable(true);
   }
 
+  function clearContextFilter() {
+    setContextFilter(null);
+    setSearchParams({});
+  }
+
+  // Filtrado
+  const filteredTickets = tickets.filter((t) => {
+    // Búsqueda general
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const searchable = `${t.plate} ${t.vehicle} ${t.vin || ""} ${t.client}`.toLowerCase();
+      if (!searchable.includes(q)) return false;
+    }
+
+    // Estado
+    if (statusFilter === "open" && t.status !== "In Progress") return false;
+    if (statusFilter === "closed" && t.status !== "Closed") return false;
+
+    // Filtro contextual
+    if (contextFilter) {
+      if (contextFilter.type === "client" && t.client !== contextFilter.value) return false;
+      if (contextFilter.type === "vehicle") {
+        const vehicleString = `${t.vehicle} ${t.plate}`;
+        if (vehicleString !== contextFilter.value) return false;
+      }
+    }
+
+    return true;
+  });
+
   return (
     <>
       <Topbar title="History & Logs" />
@@ -155,6 +205,74 @@ export default function History() {
             <Plus className="h-4 w-4" />
             Crear
           </button>
+        </div>
+
+        {/* Barra de filtros */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            {/* Búsqueda general */}
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar por placa, marca, modelo, VIN o cliente..."
+                className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm outline-none focus:border-orange-400"
+              />
+            </div>
+
+            {/* Chips de estado */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setStatusFilter("all")}
+                className={[
+                  "rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+                  statusFilter === "all"
+                    ? "border-orange-500 bg-orange-50 text-orange-600"
+                    : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50",
+                ].join(" ")}
+              >
+                Todos
+              </button>
+              <button
+                onClick={() => setStatusFilter("open")}
+                className={[
+                  "rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+                  statusFilter === "open"
+                    ? "border-orange-500 bg-orange-50 text-orange-600"
+                    : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50",
+                ].join(" ")}
+              >
+                En Proceso
+              </button>
+              <button
+                onClick={() => setStatusFilter("closed")}
+                className={[
+                  "rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+                  statusFilter === "closed"
+                    ? "border-orange-500 bg-orange-50 text-orange-600"
+                    : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50",
+                ].join(" ")}
+              >
+                Cerrados
+              </button>
+            </div>
+          </div>
+
+          {/* Chip de filtro contextual */}
+          {contextFilter && (
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                Filtrando por: {contextFilter.label}
+                <button
+                  onClick={clearContextFilter}
+                  className="rounded-full hover:bg-blue-100"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white">
@@ -187,14 +305,16 @@ export default function History() {
                     </td>
                   </tr>
                 )}
-                {!loading && !error && tickets.length === 0 && (
+                {!loading && !error && filteredTickets.length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-6 py-8 text-center text-sm text-slate-400">
-                      No hay registros todavía. Da clic en "Crear" para el primero.
+                      {tickets.length === 0
+                        ? 'No hay registros todavía. Da clic en "Crear" para el primero.'
+                        : "No se encontraron tickets con los filtros aplicados."}
                     </td>
                   </tr>
                 )}
-                {!loading && !error && tickets.map((t) => (
+                {!loading && !error && filteredTickets.map((t) => (
                   <tr
                     key={t.id}
                     onClick={() => openView(t)}
@@ -206,6 +326,7 @@ export default function History() {
                     <td className="px-6 py-3">
                       <p className="font-medium text-slate-900">{t.vehicle}</p>
                       <p className="text-xs text-slate-400">{t.plate}</p>
+                      {t.vin && <p className="text-xs font-mono text-slate-400">{t.vin}</p>}
                     </td>
                     <td className="px-6 py-3 text-orange-500">{t.client}</td>
                     <td className="px-6 py-3 text-slate-700">

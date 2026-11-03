@@ -6,6 +6,7 @@ function mapVehicleFromApi(raw) {
     clientId: String(raw.IdCliente),
     clientName: raw.ClienteNombre || "",
     plate: raw.Placas,
+    vin: raw.VIN || "",
     make: raw.Marca,
     model: raw.Modelo,
     year: raw.Anio,
@@ -21,6 +22,15 @@ export async function fetchVehicles() {
   return data.map(mapVehicleFromApi);
 }
 
+export async function checkVin(vin, excludeId) {
+  if (!vin || !vin.trim()) return { exists: false };
+  const params = new URLSearchParams({ vin: vin.trim() });
+  if (excludeId) params.append('excludeId', excludeId);
+  const res = await fetch(`${API_URL}/vehiculos/check-vin?${params}`);
+  if (!res.ok) throw new Error("No se pudo verificar el VIN.");
+  return res.json();
+}
+
 export async function createVehicle(form) {
   const res = await fetch(`${API_URL}/vehiculos`, {
     method: "POST",
@@ -28,6 +38,7 @@ export async function createVehicle(form) {
     body: JSON.stringify({
       IdCliente: form.clientId,
       Placas: form.plate,
+      VIN: form.vin,
       Marca: form.make,
       Modelo: form.model,
       Anio: form.year,
@@ -45,6 +56,7 @@ export async function createVehicle(form) {
     IdCliente: form.clientId,
     ClienteNombre: form.clientName || "",
     Placas: form.plate,
+    VIN: form.vin,
     Marca: form.make,
     Modelo: form.model,
     Anio: form.year,
@@ -53,13 +65,13 @@ export async function createVehicle(form) {
   });
 }
 
-// NUEVO: edita un vehículo existente.
 export async function updateVehicle(id, form) {
   const res = await fetch(`${API_URL}/vehiculos/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       Placas: form.plate,
+      VIN: form.vin,
       Marca: form.make,
       Modelo: form.model,
       Anio: form.year,

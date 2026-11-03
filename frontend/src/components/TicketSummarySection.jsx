@@ -1,29 +1,47 @@
-import { Trash2 } from "lucide-react";
+import { Trash2, Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 
 // Bloque "resumen" de la reparación: la lista de items que YA se agregaron
 // + (como children) mano de obra, margen y notas. Está separado a propósito
 // del selector de catálogo (<RepairItemsSection />) para que se lea como
 // "lo que va a quedar", no como parte de "lo que estoy agregando".
 //
-// items: [{ id, name, price }]
-// onUpdatePrice(id, value), onRemove(id)
+// items: [{ id, name, price, cost }]
+// onUpdatePrice(id, value), onUpdateCost(id, value), onRemove(id)
 // readOnly: muestra la lista sin inputs ni botón de borrar.
+// showCosts: controla visibilidad de columnas de costo/ganancia
 export default function TicketSummarySection({
   items,
   onUpdatePrice,
+  onUpdateCost,
   onRemove,
   readOnly = false,
   children,
 }) {
+  const [showCosts, setShowCosts] = useState(!readOnly);
+
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50">
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           Repair Summary
         </p>
-        <span className="text-xs text-slate-400">
-          {items.length} item{items.length !== 1 ? "s" : ""}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-400">
+            {items.length} item{items.length !== 1 ? "s" : ""}
+          </span>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => setShowCosts((v) => !v)}
+              className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+              title={showCosts ? "Ocultar costos" : "Mostrar costos"}
+            >
+              {showCosts ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {showCosts ? "Ocultar" : "Mostrar"}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="p-4">
@@ -35,36 +53,79 @@ export default function TicketSummarySection({
           </p>
         ) : (
           <div className="space-y-2">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
-              >
-                <span className="text-sm text-slate-700">{item.name}</span>
-                {readOnly ? (
-                  <span className="text-sm font-medium text-slate-900">
-                    ${Number(item.price).toFixed(2)}
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">$</span>
-                    <input
-                      type="number"
-                      value={item.price}
-                      onChange={(e) => onUpdatePrice(item.id, e.target.value)}
-                      className="w-20 rounded border border-slate-200 bg-white px-2 py-1 text-right text-sm outline-none focus:border-orange-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onRemove(item.id)}
-                      className="text-slate-300 hover:text-red-500"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+            {items.map((item) => {
+              const cost = Number(item.cost) || 0;
+              const price = Number(item.price) || 0;
+              const profit = price - cost;
+              const hasCost = item.cost != null;
+
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2"
+                >
+                  <span className="flex-1 text-sm text-slate-700">{item.name}</span>
+
+                  {readOnly ? (
+                    <>
+                      {showCosts && hasCost && (
+                        <span className="text-xs text-slate-500">
+                          ${cost.toFixed(2)}
+                        </span>
+                      )}
+                      <span className="text-sm font-medium text-slate-900">
+                        ${price.toFixed(2)}
+                      </span>
+                      {showCosts && hasCost && (
+                        <span className="text-xs font-medium text-emerald-600">
+                          +${profit.toFixed(2)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {showCosts && (
+                        <>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-slate-400">Cost $</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={item.cost ?? ""}
+                              onChange={(e) => onUpdateCost?.(item.id, e.target.value)}
+                              placeholder="0.00"
+                              className="w-20 rounded border border-slate-200 bg-white px-2 py-1 text-right text-sm outline-none focus:border-orange-400"
+                            />
+                          </div>
+                        </>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-slate-400">Price $</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.price}
+                          onChange={(e) => onUpdatePrice(item.id, e.target.value)}
+                          className="w-20 rounded border border-slate-200 bg-white px-2 py-1 text-right text-sm outline-none focus:border-orange-400"
+                        />
+                      </div>
+                      {showCosts && hasCost && (
+                        <span className="w-16 text-right text-xs font-medium text-emerald-600">
+                          +${profit.toFixed(2)}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onRemove(item.id)}
+                        className="text-slate-300 hover:text-red-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 

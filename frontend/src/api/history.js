@@ -5,6 +5,7 @@ function mapTicketFromApi(raw) {
     ? `${raw.Marca} ${raw.Modelo} ${raw.Anio}`
     : raw.VehiculoSnapshot || "Vehículo eliminado";
   const plate = raw.Placas || "";
+  const vin = raw.VIN || raw.VINSnapshot || "";
   const client = raw.ClienteNombre || raw.ClienteSnapshot || "—";
 
   return {
@@ -12,11 +13,13 @@ function mapTicketFromApi(raw) {
     date: raw.FechaServicio,
     vehicle,
     plate,
+    vin,
     client,
     tech: raw.Tecnico || "",
     status: raw.Estatus,
     partsCost: Number(raw.CostoPiezas) || 0,
     laborCost: Number(raw.CostoManoObra) || 0,
+    laborCostShop: raw.CostoManoObraTaller != null ? Number(raw.CostoManoObraTaller) : null,
     margin: Number(raw.MargenGanancia) || 0,
     total:
       (Number(raw.CostoPiezas) || 0) +
@@ -27,6 +30,7 @@ function mapTicketFromApi(raw) {
       id: String(i.IdServicioItem),
       name: i.Nombre,
       price: Number(i.Precio),
+      cost: i.Costo != null ? Number(i.Costo) : null,
       origin: i.Origen,
       catalogItemId: i.IdCatalogoItem || null,
     })),
@@ -53,7 +57,6 @@ export async function createTicket(payload) {
   return res.json();
 }
 
-// NUEVO: edita un ticket. El backend rechaza esto si ya está 'Closed'.
 export async function updateTicket(id, payload) {
   const res = await fetch(`${API_URL}/historial/${id}`, {
     method: "PUT",
@@ -67,7 +70,6 @@ export async function updateTicket(id, payload) {
   return res.json();
 }
 
-// NUEVO: borra un ticket. El backend rechaza esto si ya está 'Closed'.
 export async function deleteTicket(id) {
   const res = await fetch(`${API_URL}/historial/${id}`, { method: "DELETE" });
   if (!res.ok) {

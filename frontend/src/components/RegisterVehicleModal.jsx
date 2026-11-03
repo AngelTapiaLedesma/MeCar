@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Search, X } from "lucide-react";
-import { createVehicle } from "../api/vehicles";
+import { Search, X, AlertCircle } from "lucide-react";
+import { createVehicle, checkVin } from "../api/vehicles";
 import { useClients } from "../context/ClientsContext";
 
-const emptyForm = { plate: "", make: "", model: "", year: "", color: "", mileage: "" };
+const emptyForm = { plate: "", vin: "", make: "", model: "", year: "", color: "", mileage: "" };
 
 export default function RegisterVehicleModal({ open, onClose, onCreated }) {
   const { clients } = useClients();
@@ -14,6 +14,7 @@ export default function RegisterVehicleModal({ open, onClose, onCreated }) {
 
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
+  const [vinWarning, setVinWarning] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
@@ -23,8 +24,27 @@ export default function RegisterVehicleModal({ open, onClose, onCreated }) {
     c.name.toLowerCase().includes(clientQuery.toLowerCase())
   );
 
-  function update(field, value) {
-    setForm((f) => ({ ...f, [field]: value }));
+  async function update(field, value) {
+    const updatedForm = { ...form, [field]: value };
+    setForm(updatedForm);
+
+    if (field === "vin") {
+      const trimmed = value.trim();
+      if (trimmed.length > 0 && trimmed.length !== 17) {
+        setVinWarning("Aviso: El VIN estándar tiene 17 caracteres.");
+      } else {
+        setVinWarning(null);
+      }
+
+      if (trimmed) {
+        try {
+          const res = await checkVin(trimmed);
+          if (res.exists) {
+            setVinWarning(`Aviso: Este serial ya está registrado en el vehículo ${res.vehicle} de ${res.client}.`);
+          }
+        } catch {}
+      }
+    }
   }
 
   function selectClient(c) {
@@ -37,6 +57,7 @@ export default function RegisterVehicleModal({ open, onClose, onCreated }) {
   function resetAndClose() {
     setForm(emptyForm);
     setErrors({});
+    setVinWarning(null);
     setSubmitError(null);
     setSubmitting(false);
     setSelectedClient(null);
@@ -48,7 +69,6 @@ export default function RegisterVehicleModal({ open, onClose, onCreated }) {
   async function handleSubmit(e) {
     e.preventDefault();
     const newErrors = {};
-    // El cliente es obligatorio: un vehículo nunca se puede crear huérfano.
     if (!selectedClient) newErrors.client = "Selecciona a qué cliente pertenece.";
     if (!form.plate.trim()) newErrors.plate = "La placa es obligatoria.";
     if (!form.make.trim()) newErrors.make = "La marca es obligatoria.";
@@ -65,6 +85,7 @@ export default function RegisterVehicleModal({ open, onClose, onCreated }) {
         clientId: selectedClient.id,
         clientName: selectedClient.name,
         plate: form.plate.trim(),
+        vin: form.vin.trim() || undefined,
         make: form.make.trim(),
         model: form.model.trim(),
         year: Number(form.year) || undefined,
@@ -95,7 +116,6 @@ export default function RegisterVehicleModal({ open, onClose, onCreated }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
-          {/* Cliente — obligatorio */}
           <div className="relative">
             <label className="mb-1 block text-xs font-medium text-slate-600">
               Cliente *
@@ -196,6 +216,24 @@ export default function RegisterVehicleModal({ open, onClose, onCreated }) {
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              Número de Serie / VIN
+            </label>
+            <input
+              value={form.vin}
+              onChange={(e) => update("vin", e.target.value)}
+              placeholder="Ej. 1HGCR2F8... (hasta 30 chars)"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
+            />
+            {vinWarning && (
+              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>{vinWarning}</span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

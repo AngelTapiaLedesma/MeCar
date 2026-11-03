@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   Phone,
@@ -11,6 +11,7 @@ import {
   Check,
   Plus,
   Trash2,
+  History as HistoryIcon,
 } from "lucide-react";
 import Topbar from "../components/Topbar";
 import EditClientModal from "../components/EditClientModal";
@@ -21,6 +22,7 @@ import { useClients } from "../context/ClientsContext";
 
 export default function ClientDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { refreshClient } = useClients();
 
   const [client, setClient] = useState(null);
@@ -148,6 +150,13 @@ export default function ClientDetail() {
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   Editar
+                </button>
+                <button
+                  onClick={() => navigate(`/history?client=${encodeURIComponent(client.name)}`)}
+                  className="flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-600 hover:bg-orange-100"
+                >
+                  <HistoryIcon className="h-3.5 w-3.5" />
+                  Ver Historial
                 </button>
               </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Search, Plus, UserPlus, FileText, Calendar } from "lucide-react";
+import { X, Search, Plus, UserPlus, FileText, Calendar, Eye, EyeOff } from "lucide-react";
 import AddClientModal from "./AddClientModal";
 import AddVehicleModal from "./AddVehicleModal";
 import RepairItemsSection from "./RepairItemsSection";
@@ -25,15 +25,6 @@ function formatDateDisplay(iso) {
   });
 }
 
-function pillClass(active) {
-  return [
-    "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-    active
-      ? "border-orange-500 bg-orange-50 text-orange-600"
-      : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50",
-  ].join(" ");
-}
-
 export default function NewRepairTicketModal({ open, onClose, onCreated }) {
   const { clients, addClient } = useClients();
 
@@ -53,12 +44,12 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
 
   const [ticketItems, setTicketItems] = useState([]);
 
-  const [laborMode, setLaborMode] = useState("none");
-  const [laborValue, setLaborValue] = useState("");
-  const [marginMode, setMarginMode] = useState("none");
-  const [marginValue, setMarginValue] = useState("");
+  // Doble costo para mano de obra
+  const [laborCost, setLaborCost] = useState("");
+  const [laborPrice, setLaborPrice] = useState("");
 
   const [notes, setNotes] = useState("");
+  const [showCosts, setShowCosts] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
@@ -83,30 +74,28 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
     c.name.toLowerCase().includes(clientQuery.toLowerCase())
   );
   const filteredVehicles = vehicles.filter((v) => {
-    const matchesQuery = `${v.make} ${v.model} ${v.plate}`
+    const matchesQuery = `${v.make} ${v.model} ${v.plate} ${v.vin || ""}`
       .toLowerCase()
       .includes(vehicleQuery.toLowerCase());
     const matchesClient = !selectedClient || v.clientId === selectedClient.id;
     return matchesQuery && matchesClient;
   });
 
-  const partsSubtotal = ticketItems.reduce(
+  const partsPriceTotal = ticketItems.reduce(
     (sum, i) => sum + (Number(i.price) || 0),
     0
   );
-  const laborAmount =
-    laborMode === "fixed"
-      ? Number(laborValue) || 0
-      : laborMode === "percent_parts"
-      ? (partsSubtotal * (Number(laborValue) || 0)) / 100
-      : 0;
-  const marginAmount =
-    marginMode === "fixed"
-      ? Number(marginValue) || 0
-      : marginMode === "percent_total"
-      ? ((partsSubtotal + laborAmount) * (Number(marginValue) || 0)) / 100
-      : 0;
-  const total = partsSubtotal + laborAmount + marginAmount;
+  const partsCostTotal = ticketItems.reduce(
+    (sum, i) => sum + (Number(i.cost) || 0),
+    0
+  );
+
+  const laborPriceVal = Number(laborPrice) || 0;
+  const laborCostVal = Number(laborCost) || 0;
+
+  const total = partsPriceTotal + laborPriceVal;
+  const totalCost = partsCostTotal + laborCostVal;
+  const totalProfit = total - totalCost;
 
   function selectClient(c) {
     setSelectedClient(c);
@@ -138,6 +127,12 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
     );
   }
 
+  function handleUpdateItemCost(id, value) {
+    setTicketItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, cost: value === "" ? null : Number(value) } : i))
+    );
+  }
+
   function handleRemoveItem(id) {
     setTicketItems((prev) => prev.filter((i) => i.id !== id));
   }
@@ -152,10 +147,8 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
     setDate(todayIso());
     setTechnician(TECHNICIANS[0]);
     setTicketItems([]);
-    setLaborMode("none");
-    setLaborValue("");
-    setMarginMode("none");
-    setMarginValue("");
+    setLaborCost("");
+    setLaborPrice("");
     setNotes("");
     setSubmitError(null);
   }
@@ -184,11 +177,13 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
         Items: ticketItems.map((i) => ({
           Nombre: i.name,
           Precio: i.price,
+          Costo: i.cost,
           Origen: i.origin,
           IdCatalogoItem: i.origin === "catalogo" ? i.catalogItemId : null,
         })),
-        CostoManoObra: laborAmount,
-        MargenGanancia: marginAmount,
+        CostoManoObra: laborPriceVal,
+        CostoManoObraTaller: laborCost !== "" ? laborCostVal : null,
+        MargenGanancia: 0, // Ya no se usa recargo global duplicado
         Notas: notes,
       });
       onCreated?.();
@@ -220,12 +215,23 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={handleClose}
-                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCosts((v) => !v)}
+                  className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                  title={showCosts ? "Ocultar costos del taller" : "Mostrar costos del taller"}
+                >
+                  {showCosts ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  {showCosts ? "Ocultar Costos" : "Mostrar Costos"}
+                </button>
+                <button
+                  onClick={handleClose}
+                  className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 space-y-6 px-6 py-5">
@@ -307,7 +313,7 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
                             onClick={() => selectVehicle(v)}
                             className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
                           >
-                            {v.make} {v.model} — {v.plate}
+                            {v.make} {v.model} — {v.plate} {v.vin ? `(VIN: ${v.vin})` : ""}
                           </button>
                         ))}
                         {filteredVehicles.length === 0 && (
@@ -364,92 +370,49 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
               <TicketSummarySection
                 items={ticketItems}
                 onUpdatePrice={handleUpdateItemPrice}
+                onUpdateCost={handleUpdateItemCost}
                 onRemove={handleRemoveItem}
               >
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <p className="mb-2 text-[11px] font-semibold uppercase text-slate-400">
-                      Labor
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setLaborMode("none")}
-                        className={pillClass(laborMode === "none")}
-                      >
-                        None
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLaborMode("fixed")}
-                        className={pillClass(laborMode === "fixed")}
-                      >
-                        Fixed $
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLaborMode("percent_parts")}
-                        className={pillClass(laborMode === "percent_parts")}
-                      >
-                        % of parts
-                      </button>
-                    </div>
-                    {laborMode !== "none" && (
-                      <div className="mt-2 flex items-center gap-1">
-                        <span className="text-xs text-slate-400">
-                          {laborMode === "fixed" ? "$" : "%"}
-                        </span>
+                {/* Mano de obra con doble costo */}
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Labor (Mano de obra)
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    {showCosts && (
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
+                          Costo Taller ($)
+                        </label>
                         <input
                           type="number"
-                          value={laborValue}
-                          onChange={(e) => setLaborValue(e.target.value)}
-                          className="w-24 rounded border border-slate-200 bg-white px-2 py-1 text-sm outline-none focus:border-orange-400"
+                          step="0.01"
+                          value={laborCost}
+                          onChange={(e) => setLaborCost(e.target.value)}
+                          placeholder="0.00"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
                         />
                       </div>
                     )}
-                  </div>
-
-                  <div>
-                    <p className="mb-2 text-[11px] font-semibold uppercase text-slate-400">
-                      Profit Margin
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setMarginMode("none")}
-                        className={pillClass(marginMode === "none")}
-                      >
-                        None
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMarginMode("fixed")}
-                        className={pillClass(marginMode === "fixed")}
-                      >
-                        Fixed $
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMarginMode("percent_total")}
-                        className={pillClass(marginMode === "percent_total")}
-                      >
-                        % of total
-                      </button>
+                    <div className={!showCosts ? "col-span-2" : ""}>
+                      <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
+                        Precio Cliente ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={laborPrice}
+                        onChange={(e) => setLaborPrice(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
+                      />
                     </div>
-                    {marginMode !== "none" && (
-                      <div className="mt-2 flex items-center gap-1">
-                        <span className="text-xs text-slate-400">
-                          {marginMode === "fixed" ? "$" : "%"}
-                        </span>
-                        <input
-                          type="number"
-                          value={marginValue}
-                          onChange={(e) => setMarginValue(e.target.value)}
-                          className="w-24 rounded border border-slate-200 bg-white px-2 py-1 text-sm outline-none focus:border-orange-400"
-                        />
-                      </div>
-                    )}
                   </div>
+                  {showCosts && laborCost !== "" && laborPrice !== "" && (
+                    <p className="text-xs font-medium text-emerald-600">
+                      Ganancia mano de obra: +${(laborPriceVal - laborCostVal).toFixed(2)}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -476,42 +439,57 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
             )}
 
             <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
-              <p className="text-xs text-slate-400">
-                {ticketItems.length} item{ticketItems.length !== 1 ? "s" : ""} ·
-                Total ${total.toFixed(2)}
-              </p>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCreateRepair}
-                  disabled={
-                    submitting || !selectedVehicle || ticketItems.length === 0
-                  }
-                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50"
-                >
-                  {submitting ? "Creando..." : "Create Repair"}
-                </button>
+              <div className="text-xs text-slate-500">
+                <span>{ticketItems.length} items</span>
+                {showCosts && (
+                  <span className="ml-3 font-medium text-emerald-600">
+                    Ganancia estimada: +${totalProfit.toFixed(2)}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-[10px] uppercase text-slate-400">Total Cliente</p>
+                  <p className="text-lg font-bold text-orange-500">${total.toFixed(2)}</p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateRepair}
+                    disabled={
+                      submitting || !selectedVehicle || ticketItems.length === 0
+                    }
+                    className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50"
+                  >
+                    {submitting ? "Creando..." : "Create Repair"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
           <aside className="hidden w-72 shrink-0 overflow-y-auto border-l border-slate-100 bg-slate-50/50 p-6 md:block">
-            <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-900">
-              <FileText className="h-4 w-4" /> Ticket Preview
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <FileText className="h-4 w-4" /> Ticket Preview
+              </div>
             </div>
 
             {selectedVehicle ? (
-              <p className="mb-3 text-xs text-slate-500">
-                {selectedVehicle.make} {selectedVehicle.model}{" "}
-                {selectedVehicle.year} — {selectedVehicle.plate}
-              </p>
+              <div className="mb-3 text-xs text-slate-500">
+                <p className="font-medium text-slate-900">
+                  {selectedVehicle.make} {selectedVehicle.model} {selectedVehicle.year}
+                </p>
+                <p>Placa: {selectedVehicle.plate}</p>
+                {selectedVehicle.vin && <p className="font-mono">VIN: {selectedVehicle.vin}</p>}
+              </div>
             ) : (
               <p className="mb-3 text-xs text-slate-400">No vehicle selected</p>
             )}
@@ -527,27 +505,27 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
                   <div key={i.id} className="flex justify-between">
                     <span className="text-slate-700">{i.name}</span>
                     <span className="font-medium text-slate-900">
-                      ${i.price.toFixed(2)}
+                      ${Number(i.price).toFixed(2)}
                     </span>
                   </div>
                 ))}
-                <div className="mt-2 space-y-1 border-t border-slate-200 pt-2">
-                  <div className="flex justify-between text-xs text-slate-500">
-                    <span>Parts subtotal</span>
-                    <span>${partsSubtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-slate-500">
+                {laborPriceVal > 0 && (
+                  <div className="flex justify-between text-slate-600">
                     <span>Labor</span>
-                    <span>+${laborAmount.toFixed(2)}</span>
+                    <span>${laborPriceVal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-slate-500">
-                    <span>Margin</span>
-                    <span>+${marginAmount.toFixed(2)}</span>
+                )}
+                <div className="mt-4 border-t border-slate-200 pt-3">
+                  <div className="flex justify-between text-base font-bold text-orange-500">
+                    <span>Total</span>
+                    <span>${total.toFixed(2)}</span>
                   </div>
-                </div>
-                <div className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-base font-bold text-orange-500">
-                  <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  {showCosts && (
+                    <div className="mt-1 flex justify-between text-xs font-medium text-emerald-600">
+                      <span>Ganancia neta</span>
+                      <span>+${totalProfit.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

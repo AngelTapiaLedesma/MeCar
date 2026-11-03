@@ -15,8 +15,38 @@ const getVehiculos = async (req, res) => {
     }
 };
 
+// Busca si un VIN ya está registrado en otro vehículo.
+const checkVin = async (req, res) => {
+    const { vin, excludeId } = req.query;
+    if (!vin || !vin.trim()) return res.json({ exists: false });
+    try {
+        const pool = await getConnection();
+        const request = pool.request().input('VIN', sql.NVarChar, vin.trim());
+        let query = `
+            SELECT v.IdVehiculo, v.Marca, v.Modelo, c.NombreCompleto AS ClienteNombre
+            FROM Vehiculos v
+            INNER JOIN Clientes c ON c.IdCliente = v.IdCliente
+            WHERE v.VIN = @VIN
+        `;
+        if (excludeId) {
+            request.input('ExcludeId', sql.Int, excludeId);
+            query += ' AND v.IdVehiculo <> @ExcludeId';
+        }
+        const result = await request.query(query);
+        if (result.recordset.length === 0) return res.json({ exists: false });
+        const match = result.recordset[0];
+        res.json({
+            exists: true,
+            vehicle: `${match.Marca} ${match.Modelo}`,
+            client: match.ClienteNombre,
+        });
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+};
+
 const createVehiculo = async (req, res) => {
-    const { IdCliente, Placas, Marca, Modelo, Anio, Color, KilometrajeActual } = req.body;
+    const { IdCliente, Placas, Marca, Modelo, Anio, Color, KilometrajeActual, VIN } = req.body;
 
     if (!IdCliente || !Placas || !Marca || !Modelo) {
         return res
@@ -34,10 +64,11 @@ const createVehiculo = async (req, res) => {
             .input('Anio', sql.Int, Anio)
             .input('Color', sql.NVarChar, Color)
             .input('KilometrajeActual', sql.Int, KilometrajeActual)
+            .input('VIN', sql.NVarChar, VIN || null)
             .query(`
-                INSERT INTO Vehiculos (IdCliente, Placas, Marca, Modelo, Anio, Color, KilometrajeActual)
+                INSERT INTO Vehiculos (IdCliente, Placas, Marca, Modelo, Anio, Color, KilometrajeActual, VIN)
                 OUTPUT INSERTED.IdVehiculo
-                VALUES (@IdCliente, @Placas, @Marca, @Modelo, @Anio, @Color, @KilometrajeActual)
+                VALUES (@IdCliente, @Placas, @Marca, @Modelo, @Anio, @Color, @KilometrajeActual, @VIN)
             `);
         res.status(201).json({
             message: 'Vehículo registrado.',
@@ -51,7 +82,7 @@ const createVehiculo = async (req, res) => {
 // NUEVO: edita los datos del vehículo (no cambia de dueño aquí).
 const updateVehiculo = async (req, res) => {
     const { id } = req.params;
-    const { Placas, Marca, Modelo, Anio, Color, KilometrajeActual } = req.body;
+    const { Placas, Marca, Modelo, Anio, Color, KilometrajeActual, VIN } = req.body;
 
     if (!Placas || !Marca || !Modelo) {
         return res
@@ -69,6 +100,7 @@ const updateVehiculo = async (req, res) => {
             .input('Anio', sql.Int, Anio)
             .input('Color', sql.NVarChar, Color)
             .input('KilometrajeActual', sql.Int, KilometrajeActual)
+            .input('VIN', sql.NVarChar, VIN || null)
             .query(`
                 UPDATE Vehiculos
                 SET Placas = @Placas,
@@ -76,7 +108,8 @@ const updateVehiculo = async (req, res) => {
                     Modelo = @Modelo,
                     Anio = @Anio,
                     Color = @Color,
-                    KilometrajeActual = @KilometrajeActual
+                    KilometrajeActual = @KilometrajeActual,
+                    VIN = @VIN
                 WHERE IdVehiculo = @IdVehiculo
             `);
 
@@ -126,4 +159,4 @@ const deleteVehiculo = async (req, res) => {
     }
 };
 
-module.exports = { getVehiculos, createVehiculo, updateVehiculo, deleteVehiculo };
+module.exports = { getVehiculos, createVehiculo, updateVehiculo, deleteVehiculo, checkVin };
