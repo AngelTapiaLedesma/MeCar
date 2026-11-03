@@ -19,6 +19,24 @@ export async function fetchReminders(vehicleId) {
   return data.map(mapReminderFromApi);
 }
 
+export async function fetchAllReminders() {
+  const res = await fetch(`${API_URL}/recordatorios`);
+  if (!res.ok) throw new Error("No se pudieron cargar las citas.");
+  const data = await res.json();
+  return data.map((raw) => ({
+    id: String(raw.IdRecordatorio),
+    vehicleId: String(raw.IdVehiculo),
+    name: raw.TipoRecordatorio,
+    startDate: raw.FechaInicio ? String(raw.FechaInicio).slice(0, 10) : "",
+    recurring: !!raw.EsRecurrente,
+    intervalDays: raw.IntervaloDias ?? null,
+    notify: raw.Notificar !== false && raw.Notificar !== 0,
+    vehiculo: `${raw.Marca} ${raw.Modelo} ${raw.Anio || ""}`.trim(),
+    placas: raw.Placas,
+    cliente: raw.ClienteNombre,
+  }));
+}
+
 export async function createReminder(form) {
   const res = await fetch(`${API_URL}/recordatorios`, {
     method: "POST",

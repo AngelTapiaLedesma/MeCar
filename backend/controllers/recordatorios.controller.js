@@ -1,5 +1,24 @@
 const { getConnection, sql } = require('../db');
 
+const getAllRecordatorios = async (req, res) => {
+    try {
+        const pool = await getConnection();
+        const result = await pool.request().query(`
+            SELECT
+                r.*,
+                v.Placas, v.Marca, v.Modelo, v.Anio,
+                c.NombreCompleto AS ClienteNombre
+            FROM Recordatorios r
+            INNER JOIN Vehiculos v ON v.IdVehiculo = r.IdVehiculo
+            INNER JOIN Clientes c ON c.IdCliente = v.IdCliente
+            ORDER BY r.FechaInicio ASC
+        `);
+        res.json(result.recordset);
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+};
+
 const getRecordatoriosByVehiculo = async (req, res) => {
     const { idVehiculo } = req.params;
     try {
@@ -112,6 +131,7 @@ const deleteRecordatorio = async (req, res) => {
 };
 
 module.exports = {
+    getAllRecordatorios,
     getRecordatoriosByVehiculo,
     createRecordatorio,
     updateRecordatorio,

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { Menu, Home, Users, Car, History, Settings } from "lucide-react";
+import { Menu, Home, Users, Car, History, CalendarDays, Settings } from "lucide-react";
 
 const navItems = [
   { label: "Home", to: "/", icon: Home, end: true },
   { label: "Clients", to: "/clients", icon: Users },
   { label: "Vehicles", to: "/vehicles", icon: Car },
   { label: "History", to: "/history", icon: History },
+  { label: "Agenda", to: "/agenda", icon: CalendarDays },
   { label: "Settings", to: "/settings", icon: Settings },
 ];
 
