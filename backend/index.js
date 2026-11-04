@@ -21,6 +21,7 @@ app.use(require('./routes/vehiculos.routes'));
 app.use(require('./routes/historial.routes'));
 app.use(require('./routes/recordatorios.routes'));
 app.use(require('./routes/catalogo.routes')); // NUEVO: catálogo de servicios
+app.use(require('./routes/categorias.routes')); // NUEVO: categorías de recordatorios
 
 // Levantar el servidor y comprobar la base de datos
 app.listen(port, async () => {

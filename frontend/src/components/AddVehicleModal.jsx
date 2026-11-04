@@ -17,6 +17,12 @@ export default function AddVehicleModal({ open, onClose, client, onCreated }) {
       setErrors({});
       setVinWarning(null);
       setSubmitError(null);
+    } else {
+      const handleEsc = (e) => {
+        if (e.key === "Escape") resetAndClose();
+      };
+      document.addEventListener("keydown", handleEsc);
+      return () => document.removeEventListener("keydown", handleEsc);
     }
   }, [open]);
 
@@ -90,19 +96,19 @@ export default function AddVehicleModal({ open, onClose, client, onCreated }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4">
       <div className="w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <div>
+        <div className="relative flex items-center justify-center border-b border-slate-100 px-6 py-4">
+          <button
+            onClick={resetAndClose}
+            className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div className="text-center">
             <h2 className="text-base font-semibold text-slate-900">
               Nuevo vehículo
             </h2>
             <p className="text-xs text-slate-400">Para {client.name}</p>
           </div>
-          <button
-            onClick={resetAndClose}
-            className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">

@@ -9,6 +9,9 @@ function mapReminderFromApi(raw) {
     recurring: !!raw.EsRecurrente,
     intervalDays: raw.IntervaloDias ?? null,
     notify: raw.Notificar !== false && raw.Notificar !== 0,
+    categoryId: raw.IdCategoria,
+    categoryName: raw.CategoriaNombre,
+    categoryColor: raw.CategoriaColor,
   };
 }
 
@@ -34,6 +37,9 @@ export async function fetchAllReminders() {
     vehiculo: `${raw.Marca} ${raw.Modelo} ${raw.Anio || ""}`.trim(),
     placas: raw.Placas,
     cliente: raw.ClienteNombre,
+    categoryId: raw.IdCategoria,
+    categoryName: raw.CategoriaNombre,
+    categoryColor: raw.CategoriaColor,
   }));
 }
 
@@ -48,6 +54,7 @@ export async function createReminder(form) {
       EsRecurrente: form.recurring,
       IntervaloDias: form.recurring ? form.intervalDays : null,
       Notificar: form.notify,
+      IdCategoria: form.categoryId,
     }),
   });
   if (!res.ok) {
@@ -67,6 +74,7 @@ export async function updateReminder(id, form) {
       EsRecurrente: form.recurring,
       IntervaloDias: form.recurring ? form.intervalDays : null,
       Notificar: form.notify,
+      IdCategoria: form.categoryId,
     }),
   });
   if (!res.ok) {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, X, AlertCircle } from "lucide-react";
 import { createVehicle, checkVin } from "../api/vehicles";
 import { useClients } from "../context/ClientsContext";
@@ -17,6 +17,15 @@ export default function RegisterVehicleModal({ open, onClose, onCreated }) {
   const [vinWarning, setVinWarning] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleEsc = (e) => {
+      if (e.key === "Escape") resetAndClose();
+    };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [open]);
 
   if (!open) return null;
 
@@ -103,16 +112,16 @@ export default function RegisterVehicleModal({ open, onClose, onCreated }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <h2 className="text-base font-semibold text-slate-900">
-            Register Vehicle
-          </h2>
+        <div className="relative flex items-center justify-center border-b border-slate-100 px-6 py-4">
           <button
             onClick={resetAndClose}
-            className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
           >
             <X className="h-5 w-5" />
           </button>
+          <h2 className="text-base font-semibold text-slate-900">
+            Register Vehicle
+          </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
