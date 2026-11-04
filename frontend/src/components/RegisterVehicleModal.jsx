@@ -120,7 +120,7 @@ export default function RegisterVehicleModal({ open, onClose, onCreated }) {
             <X className="h-5 w-5" />
           </button>
           <h2 className="text-base font-semibold text-slate-900">
-            Register Vehicle
+            Registrar vehículo
           </h2>
         </div>
 

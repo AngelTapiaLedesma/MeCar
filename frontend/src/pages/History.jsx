@@ -189,14 +189,14 @@ export default function History() {
 
   return (
     <>
-      <Topbar title="History & Logs" />
+      <Topbar title="Historial y Registros" />
 
       <main className="space-y-6 p-8">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">History & Logs</h2>
+            <h2 className="text-xl font-bold text-slate-900">Historial y Registros</h2>
             <p className="text-sm text-slate-400">
-              Complete repair and service records
+              Registros completos de reparaciones y servicios
             </p>
           </div>
           <button
@@ -281,13 +281,13 @@ export default function History() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400">
-                  <th className="px-6 py-3 font-medium">Date</th>
-                  <th className="px-6 py-3 font-medium">Vehicle</th>
-                  <th className="px-6 py-3 font-medium">Client</th>
-                  <th className="px-6 py-3 font-medium">Service Type</th>
-                  <th className="px-6 py-3 font-medium">Technician</th>
-                  <th className="px-6 py-3 font-medium">Cost</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
+                  <th className="px-6 py-3 font-medium">Fecha</th>
+                  <th className="px-6 py-3 font-medium">Vehículo</th>
+                  <th className="px-6 py-3 font-medium">Cliente</th>
+                  <th className="px-6 py-3 font-medium">Tipo de Servicio</th>
+                  <th className="px-6 py-3 font-medium">Técnico</th>
+                  <th className="px-6 py-3 font-medium">Costo</th>
+                  <th className="px-6 py-3 font-medium">Estatus</th>
                   <th className="px-6 py-3 font-medium"></th>
                 </tr>
               </thead>
@@ -340,11 +340,11 @@ export default function History() {
                     <td className="px-6 py-3">
                       {t.status === "Closed" ? (
                         <span className="flex w-fit items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500">
-                          <Lock className="h-3 w-3" /> Closed
+                          <Lock className="h-3 w-3" /> Cerrado
                         </span>
                       ) : (
                         <span className="rounded-md bg-orange-50 px-2 py-1 text-xs font-medium text-orange-600">
-                          In Progress
+                          En Proceso
                         </span>
                       )}
                     </td>

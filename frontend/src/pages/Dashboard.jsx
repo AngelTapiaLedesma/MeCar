@@ -2,38 +2,38 @@ import { TrendingUp } from "lucide-react";
 import Topbar from "../components/Topbar";
 
 const stats = [
-  { label: "In Repair", value: 6, sublabel: "50% of fleet", accent: true },
-  { label: "Clients", value: 8, sublabel: "2 added this month" },
-  { label: "Vehicles", value: 12, sublabel: "Fleet registered" },
-  { label: "Completed", value: 34, sublabel: "This month" },
+  { label: "En Reparación", value: 6, sublabel: "50% de la flota", accent: true },
+  { label: "Clientes", value: 8, sublabel: "2 agregados este mes" },
+  { label: "Vehículos", value: 12, sublabel: "Flota registrada" },
+  { label: "Completados", value: 34, sublabel: "Este mes" },
 ];
 
 const activeRepairs = [
-  { vehicle: "Honda Civic 2019", plate: "MRX-4421", owner: "Sarah Thompson", type: "Full Service", tech: "Alex Kovacs", status: "In Progress" },
-  { vehicle: "BMW 3 Series 2020", plate: "BWM-3398", owner: "James Chen", type: "Engine Diagnostics", tech: "Alex Kovacs", status: "In Progress" },
-  { vehicle: "Nissan Altima 2023", plate: "NIS-9923", owner: "Nathan Okafor", type: "A/C Repair", tech: "Sam Torres", status: "In Progress" },
-  { vehicle: "Audi A4 2018", plate: "ADI-7754", owner: "David Williams", type: "Suspension Overhaul", tech: "Alex Kovacs", status: "In Progress" },
-  { vehicle: "Kia Sportage 2020", plate: "KIA-7743", owner: "James Chen", type: "Transmission Service", tech: "Sam Torres", status: "In Progress" },
-  { vehicle: "Subaru Outback 2023", plate: "SUB-1198", owner: "Laura Schneider", type: "Coolant Flush", tech: "Jordan Mills", status: "In Progress" },
+  { vehicle: "Honda Civic 2019", plate: "MRX-4421", owner: "Sarah Thompson", type: "Servicio Completo", tech: "Alex Kovacs", status: "En Proceso" },
+  { vehicle: "BMW 3 Series 2020", plate: "BWM-3398", owner: "James Chen", type: "Diagnóstico de Motor", tech: "Alex Kovacs", status: "En Proceso" },
+  { vehicle: "Nissan Altima 2023", plate: "NIS-9923", owner: "Nathan Okafor", type: "Reparación de A/C", tech: "Sam Torres", status: "En Proceso" },
+  { vehicle: "Audi A4 2018", plate: "ADI-7754", owner: "David Williams", type: "Revisión de Suspensión", tech: "Alex Kovacs", status: "En Proceso" },
+  { vehicle: "Kia Sportage 2020", plate: "KIA-7743", owner: "James Chen", type: "Servicio de Transmisión", tech: "Sam Torres", status: "En Proceso" },
+  { vehicle: "Subaru Outback 2023", plate: "SUB-1198", owner: "Laura Schneider", type: "Cambio de Refrigerante", tech: "Jordan Mills", status: "En Proceso" },
 ];
 
 const upcomingEvents = [
-  { day: "20", month: "AUG", label: "Service — Civic / Thompson" },
-  { day: "21", month: "AUG", label: "Pickup — Camry / Rivera" },
-  { day: "23", month: "AUG", label: "Inspection — BMW / Chen" },
-  { day: "26", month: "AUG", label: "Appointment — F-150 / Martinez" },
-  { day: "28", month: "AUG", label: "MOT Due — Audi / Williams" },
+  { day: "20", month: "AGO", label: "Servicio — Civic / Thompson" },
+  { day: "21", month: "AGO", label: "Entrega — Camry / Rivera" },
+  { day: "23", month: "AGO", label: "Inspección — BMW / Chen" },
+  { day: "26", month: "AGO", label: "Cita — F-150 / Martinez" },
+  { day: "28", month: "AGO", label: "Revisión — Audi / Williams" },
 ];
 
 const fleetStatus = [
-  { label: "In Repair", count: 6, color: "bg-orange-500", pct: 50 },
-  { label: "Ready", count: 2, color: "bg-emerald-500", pct: 17 },
-  { label: "Waiting", count: 2, color: "bg-amber-400", pct: 17 },
-  { label: "Delivered", count: 2, color: "bg-slate-400", pct: 17 },
+  { label: "En Reparación", count: 6, color: "bg-orange-500", pct: 50 },
+  { label: "Listo", count: 2, color: "bg-emerald-500", pct: 17 },
+  { label: "En Espera", count: 2, color: "bg-amber-400", pct: 17 },
+  { label: "Entregado", count: 2, color: "bg-slate-400", pct: 17 },
 ];
 
 function MiniCalendar() {
-  const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const weekDays = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
   const leadingBlanks = 6;
   const daysInMonth = 31;
   const today = 19;
@@ -46,7 +46,7 @@ function MiniCalendar() {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5">
-      <p className="mb-3 text-sm font-semibold text-slate-900">August 2026</p>
+      <p className="mb-3 text-sm font-semibold text-slate-900">Agosto 2026</p>
       <div className="grid grid-cols-7 gap-y-2 text-center text-xs">
         {weekDays.map((d) => (
           <span key={d} className="font-medium text-slate-400">
@@ -81,7 +81,7 @@ function MiniCalendar() {
 export default function Dashboard() {
   return (
     <>
-      <Topbar title="Dashboard" />
+      <Topbar title="Panel Principal" />
 
       <main className="space-y-6 p-8">
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -121,21 +121,21 @@ export default function Dashboard() {
             <div className="rounded-xl border border-slate-200 bg-white">
               <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
                 <h2 className="text-sm font-semibold text-slate-900">
-                  Active Repairs
+                  Reparaciones Activas
                 </h2>
                 <span className="text-xs text-orange-500">
-                  Today — Aug 19, 2026
+                  Hoy — 19 de Ago, 2026
                 </span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400">
-                      <th className="px-6 py-3 font-medium">Vehicle</th>
-                      <th className="px-6 py-3 font-medium">Owner</th>
-                      <th className="px-6 py-3 font-medium">Type</th>
-                      <th className="px-6 py-3 font-medium">Technician</th>
-                      <th className="px-6 py-3 font-medium">Status</th>
+                      <th className="px-6 py-3 font-medium">Vehículo</th>
+                      <th className="px-6 py-3 font-medium">Propietario</th>
+                      <th className="px-6 py-3 font-medium">Tipo</th>
+                      <th className="px-6 py-3 font-medium">Técnico</th>
+                      <th className="px-6 py-3 font-medium">Estatus</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -177,7 +177,7 @@ export default function Dashboard() {
 
             <div className="rounded-xl border border-slate-200 bg-white p-5">
               <h2 className="mb-4 text-sm font-semibold text-slate-900">
-                Upcoming Events
+                Próximos Eventos
               </h2>
               <ul className="space-y-3">
                 {upcomingEvents.map((e, i) => (
@@ -201,7 +201,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
           <div className="rounded-xl border border-slate-200 bg-white p-6 lg:col-span-3">
             <h2 className="mb-5 text-sm font-semibold text-slate-900">
-              Fleet Status Overview
+              Resumen del Estado de la Flota
             </h2>
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
               {fleetStatus.map((f) => (
@@ -219,7 +219,7 @@ export default function Dashboard() {
                     />
                   </div>
                   <p className="mt-2 text-xs text-slate-400">
-                    {f.count} vehicles
+                    {f.count} vehículos
                   </p>
                 </div>
               ))}
@@ -229,7 +229,7 @@ export default function Dashboard() {
           <div className="rounded-xl border border-slate-200 bg-white p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-900">
-                Monthly Revenue
+                Ingresos Mensuales
               </h2>
               <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
                 <TrendingUp className="h-3.5 w-3.5" />
@@ -238,7 +238,7 @@ export default function Dashboard() {
             </div>
             <p className="mt-3 text-3xl font-bold text-slate-900">$18,340</p>
             <p className="mt-1 text-xs text-slate-400">
-              vs. $16,320 last month
+              vs. $16,320 el mes pasado
             </p>
           </div>
         </div>

@@ -22,10 +22,10 @@ import {
 } from "../api/reminders";
 import { fetchCategorias } from "../api/categorias";
 
-const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const WEEKDAYS = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
 function toIsoDate(d) {
@@ -307,17 +307,17 @@ export default function VehicleDetailModal({ open, onClose, vehicle }) {
                 <p className="text-slate-700">{vehicle.color || "—"}</p>
               </div>
               <div>
-                <p className="text-[11px] font-semibold uppercase text-slate-400">Mileage</p>
+                <p className="text-[11px] font-semibold uppercase text-slate-400">Kilometraje</p>
                 <p className="text-slate-700">
                   {vehicle.mileage != null ? `${vehicle.mileage.toLocaleString()} km` : "—"}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-semibold uppercase text-slate-400">Owner</p>
+                <p className="text-[11px] font-semibold uppercase text-slate-400">Propietario</p>
                 <p className="text-orange-500">{vehicle.clientName}</p>
               </div>
               <div>
-                <p className="text-[11px] font-semibold uppercase text-slate-400">Plate</p>
+                <p className="text-[11px] font-semibold uppercase text-slate-400">Placa</p>
                 <p className="text-slate-700">{vehicle.plate}</p>
               </div>
             </div>

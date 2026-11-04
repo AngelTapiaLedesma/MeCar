@@ -3,12 +3,12 @@ import { NavLink } from "react-router-dom";
 import { Menu, Home, Users, Car, History, CalendarDays, Settings } from "lucide-react";
 
 const navItems = [
-  { label: "Home", to: "/", icon: Home, end: true },
-  { label: "Clients", to: "/clients", icon: Users },
-  { label: "Vehicles", to: "/vehicles", icon: Car },
-  { label: "History", to: "/history", icon: History },
+  { label: "Inicio", to: "/", icon: Home, end: true },
+  { label: "Clientes", to: "/clients", icon: Users },
+  { label: "Vehículos", to: "/vehicles", icon: Car },
+  { label: "Historial", to: "/history", icon: History },
   { label: "Agenda", to: "/agenda", icon: CalendarDays },
-  { label: "Settings", to: "/settings", icon: Settings },
+  { label: "Configuración", to: "/settings", icon: Settings },
 ];
 
 export default function Sidebar() {
@@ -43,14 +43,14 @@ export default function Sidebar() {
       {/* Toggle */}
       <button
         onClick={() => setCollapsed((c) => !c)}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        aria-label={collapsed ? "Expandir barra lateral" : "Contraer barra lateral"}
         className={[
           "mx-3 mt-3 flex h-9 items-center gap-2 rounded-lg text-slate-400 transition-colors hover:bg-white/5 hover:text-white",
           collapsed ? "justify-center" : "px-3",
         ].join(" ")}
       >
         <Menu className="h-4 w-4 shrink-0" />
-        {!collapsed && <span className="text-xs font-medium">Collapse</span>}
+        {!collapsed && <span className="text-xs font-medium">Contraer</span>}
       </button>
 
       {/* Nav */}

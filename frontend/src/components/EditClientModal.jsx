@@ -165,7 +165,7 @@ export default function EditClientModal({ open, onClose, client, onUpdated }) {
                     : "border-slate-200 text-slate-500 hover:bg-slate-50",
                 ].join(" ")}
               >
-                Active
+                Activo
               </button>
               <button
                 type="button"
@@ -177,7 +177,7 @@ export default function EditClientModal({ open, onClose, client, onUpdated }) {
                     : "border-slate-200 text-slate-500 hover:bg-slate-50",
                 ].join(" ")}
               >
-                Inactive
+                Inactivo
               </button>
             </div>
           </div>

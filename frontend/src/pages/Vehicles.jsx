@@ -125,14 +125,14 @@ export default function Vehicles() {
 
   return (
     <>
-      <Topbar title="Vehicles" />
+      <Topbar title="Vehículos" />
 
       <main className="space-y-6 p-8">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Vehicles</h2>
+            <h2 className="text-xl font-bold text-slate-900">Vehículos</h2>
             <p className="text-sm text-slate-400">
-              {vehicles.length} vehicles registered
+              {vehicles.length} vehículos registrados
             </p>
           </div>
           <button
@@ -140,7 +140,7 @@ export default function Vehicles() {
             className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600"
           >
             <Plus className="h-4 w-4" />
-            Register Vehicle
+            Registrar vehículo
           </button>
         </div>
 
@@ -150,7 +150,7 @@ export default function Vehicles() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search vehicles by plate, make, model, VIN or owner..."
+              placeholder="Buscar vehículos por placa, marca, modelo, VIN o propietario..."
               className="w-full text-sm text-slate-700 outline-none placeholder:text-slate-400"
             />
           </div>
@@ -159,11 +159,11 @@ export default function Vehicles() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400">
-                  <th className="px-6 py-3 font-medium">Plate</th>
-                  <th className="px-6 py-3 font-medium">Make / Model</th>
-                  <th className="px-6 py-3 font-medium">Year</th>
-                  <th className="px-6 py-3 font-medium">Owner</th>
-                  <th className="px-6 py-3 font-medium">Mileage</th>
+                  <th className="px-6 py-3 font-medium">Placa</th>
+                  <th className="px-6 py-3 font-medium">Marca / Modelo</th>
+                  <th className="px-6 py-3 font-medium">Año</th>
+                  <th className="px-6 py-3 font-medium">Propietario</th>
+                  <th className="px-6 py-3 font-medium">Kilometraje</th>
                   <th className="px-6 py-3 font-medium"></th>
                 </tr>
               </thead>
@@ -186,8 +186,8 @@ export default function Vehicles() {
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-400">
                       {vehicles.length === 0
-                        ? 'No hay vehículos todavía. Da clic en "Register Vehicle".'
-                        : `No vehicles match "${query}".`}
+                        ? 'No hay vehículos todavía. Da clic en "Registrar vehículo".'
+                        : `Ningún vehículo coincide con "${query}".`}
                     </td>
                   </tr>
                 )}

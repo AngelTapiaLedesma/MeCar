@@ -11,31 +11,30 @@ import {
 import Topbar from "../components/Topbar";
 
 const CATEGORIES = [
-  { id: "workshop", label: "Workshop Details", icon: Wrench },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "notification-center", label: "Notification Center", icon: BellRing },
-  { id: "team", label: "Team", icon: Users },
-  { id: "security", label: "Security", icon: Shield },
+  { id: "workshop", label: "Detalles del Taller", icon: Wrench },
+  { id: "notifications", label: "Notificaciones", icon: Bell },
+  { id: "notification-center", label: "Centro de Notificaciones", icon: BellRing },
+  { id: "team", label: "Equipo", icon: Users },
+  { id: "security", label: "Seguridad", icon: Shield },
 ];
 
-// Índice de búsqueda: cada campo/sección importante, para poder saltar directo a él.
 const SEARCH_INDEX = [
-  { id: "field-workshop-name", label: "Workshop Name", category: "workshop" },
-  { id: "field-phone", label: "Phone", category: "workshop" },
-  { id: "field-email", label: "Email", category: "workshop" },
-  { id: "field-tax-id", label: "Tax ID", category: "workshop" },
-  { id: "field-address", label: "Address", category: "workshop" },
-  { id: "field-appointment-reminders", label: "Appointment Reminders", category: "notifications" },
-  { id: "field-repair-updates", label: "Repair Updates", category: "notifications" },
-  { id: "field-monthly-reports", label: "Monthly Reports", category: "notifications" },
-  { id: "field-low-inventory", label: "Low Inventory Alerts", category: "notifications" },
-  { id: "field-bell-visibility", label: "Show in Bell Menu", category: "notification-center" },
-  { id: "field-quiet-hours", label: "Quiet Hours", category: "notification-center" },
-  { id: "field-clear-history", label: "Clear Notification History", category: "notification-center" },
-  { id: "field-add-member", label: "Add Team Member", category: "team" },
-  { id: "field-change-password", label: "Change Password", category: "security" },
-  { id: "field-2fa", label: "Two-Factor Authentication", category: "security" },
-  { id: "field-sessions", label: "Active Sessions", category: "security" },
+  { id: "field-workshop-name", label: "Nombre del Taller", category: "workshop" },
+  { id: "field-phone", label: "Teléfono", category: "workshop" },
+  { id: "field-email", label: "Correo", category: "workshop" },
+  { id: "field-tax-id", label: "RFC / Identificación Fiscal", category: "workshop" },
+  { id: "field-address", label: "Dirección", category: "workshop" },
+  { id: "field-appointment-reminders", label: "Recordatorios de Citas", category: "notifications" },
+  { id: "field-repair-updates", label: "Actualizaciones de Reparación", category: "notifications" },
+  { id: "field-monthly-reports", label: "Reportes Mensuales", category: "notifications" },
+  { id: "field-low-inventory", label: "Alertas de Inventario Bajo", category: "notifications" },
+  { id: "field-bell-visibility", label: "Mostrar en Menú de Campana", category: "notification-center" },
+  { id: "field-quiet-hours", label: "Horario Silencioso", category: "notification-center" },
+  { id: "field-clear-history", label: "Borrar Historial de Notificaciones", category: "notification-center" },
+  { id: "field-add-member", label: "Agregar Miembro de Equipo", category: "team" },
+  { id: "field-change-password", label: "Cambiar Contraseña", category: "security" },
+  { id: "field-2fa", label: "Autenticación de Dos Factores", category: "security" },
+  { id: "field-sessions", label: "Sesiones Activas", category: "security" },
 ];
 
 function Toggle({ checked, onChange }) {
@@ -50,8 +49,6 @@ function Toggle({ checked, onChange }) {
         checked ? "bg-orange-500" : "bg-slate-200",
       ].join(" ")}
     >
-      {/* left-0 es la clave: sin él, la bolita arranca centrada (los <button>
-          centran su contenido) y el translate se suma desde ahí. */}
       <span
         className={[
           "absolute left-0 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
@@ -129,7 +126,6 @@ export default function Settings() {
     setHighlighted(item.id);
   }
 
-  // Después de cambiar de categoría, espera a que el DOM pinte y salta al campo.
   useEffect(() => {
     if (!highlighted) return;
     const el = document.getElementById(highlighted);
@@ -148,7 +144,7 @@ export default function Settings() {
 
   return (
     <>
-      <Topbar title="Settings" />
+      <Topbar title="Configuración" />
 
       <main className="flex h-[calc(100%-4rem)]">
         {/* Sidebar interno de Settings */}
@@ -158,7 +154,7 @@ export default function Settings() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search settings..."
+              placeholder="Buscar configuración..."
               className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-orange-400"
             />
             {results.length > 0 && (
@@ -172,7 +168,7 @@ export default function Settings() {
                   >
                     <span className="text-slate-700">{item.label}</span>
                     <span className="ml-2 text-xs text-slate-400">
-                      in{" "}
+                      en{" "}
                       {CATEGORIES.find((c) => c.id === item.category)?.label}
                     </span>
                   </button>
@@ -207,10 +203,10 @@ export default function Settings() {
         <div className="flex-1 overflow-y-auto p-8">
           <div className="mx-auto max-w-2xl space-y-6">
             {activeCategory === "workshop" && (
-              <SettingsCard title="Workshop Details">
+              <SettingsCard title="Detalles del Taller">
                 <div className="grid grid-cols-2 gap-4">
                   <div className={highlightClass("field-workshop-name")}>
-                    <Field id="field-workshop-name" label="Workshop Name">
+                    <Field id="field-workshop-name" label="Nombre del Taller">
                       <input
                         defaultValue="meCar Auto Service"
                         className={inputClass}
@@ -218,12 +214,12 @@ export default function Settings() {
                     </Field>
                   </div>
                   <div className={highlightClass("field-phone")}>
-                    <Field id="field-phone" label="Phone">
+                    <Field id="field-phone" label="Teléfono">
                       <input defaultValue="+1 555-0100" className={inputClass} />
                     </Field>
                   </div>
                   <div className={highlightClass("field-email")}>
-                    <Field id="field-email" label="Email">
+                    <Field id="field-email" label="Correo">
                       <input
                         defaultValue="contact@mecar.auto"
                         className={inputClass}
@@ -231,7 +227,7 @@ export default function Settings() {
                     </Field>
                   </div>
                   <div className={highlightClass("field-tax-id")}>
-                    <Field id="field-tax-id" label="Tax ID">
+                    <Field id="field-tax-id" label="RFC / Identificación Fiscal">
                       <input
                         defaultValue="TX-882-4499"
                         className={inputClass}
@@ -239,7 +235,7 @@ export default function Settings() {
                     </Field>
                   </div>
                   <div className={`col-span-2 ${highlightClass("field-address")}`}>
-                    <Field id="field-address" label="Address">
+                    <Field id="field-address" label="Dirección">
                       <input
                         defaultValue="1240 Garage Lane, Detroit, MI 48201"
                         className={inputClass}
@@ -251,13 +247,13 @@ export default function Settings() {
             )}
 
             {activeCategory === "notifications" && (
-              <SettingsCard title="Notifications">
+              <SettingsCard title="Notificaciones">
                 <div className="divide-y divide-slate-100">
                   <div className={highlightClass("field-appointment-reminders")}>
                     <NotificationRow
                       id="field-appointment-reminders"
-                      title="Appointment Reminders"
-                      description="Send email reminders 24h before appointments"
+                      title="Recordatorios de Citas"
+                      description="Enviar recordatorios por correo 24h antes de las citas"
                       checked={notifications.appointmentReminders}
                       onChange={(v) =>
                         setNotifications((n) => ({ ...n, appointmentReminders: v }))
@@ -267,8 +263,8 @@ export default function Settings() {
                   <div className={highlightClass("field-repair-updates")}>
                     <NotificationRow
                       id="field-repair-updates"
-                      title="Repair Updates"
-                      description="Notify clients when vehicle status changes"
+                      title="Actualizaciones de Reparación"
+                      description="Notificar a los clientes cuando cambie el estatus del vehículo"
                       checked={notifications.repairUpdates}
                       onChange={(v) =>
                         setNotifications((n) => ({ ...n, repairUpdates: v }))
@@ -278,8 +274,8 @@ export default function Settings() {
                   <div className={highlightClass("field-monthly-reports")}>
                     <NotificationRow
                       id="field-monthly-reports"
-                      title="Monthly Reports"
-                      description="Receive monthly performance digest"
+                      title="Reportes Mensuales"
+                      description="Recibir resumen de rendimiento mensual"
                       checked={notifications.monthlyReports}
                       onChange={(v) =>
                         setNotifications((n) => ({ ...n, monthlyReports: v }))
@@ -289,8 +285,8 @@ export default function Settings() {
                   <div className={highlightClass("field-low-inventory")}>
                     <NotificationRow
                       id="field-low-inventory"
-                      title="Low Inventory Alerts"
-                      description="Alert when parts stock runs low"
+                      title="Alertas de Inventario Bajo"
+                      description="Alertar cuando las refacciones o stock estén bajos"
                       checked={notifications.lowInventory}
                       onChange={(v) =>
                         setNotifications((n) => ({ ...n, lowInventory: v }))
@@ -303,7 +299,7 @@ export default function Settings() {
 
             {activeCategory === "notification-center" && (
               <>
-                <SettingsCard title="Show in Bell Menu">
+                <SettingsCard title="Mostrar en Menú de Campana">
                   <p className="mb-3 text-xs text-slate-400">
                     Elige qué tipos de eventos aparecen en la campanita del
                     encabezado (además de enviarse por email).
@@ -311,8 +307,8 @@ export default function Settings() {
                   <div id="field-bell-visibility" className={`divide-y divide-slate-100 ${highlightClass("field-bell-visibility")}`}>
                     <NotificationRow
                       id="bell-appointment-reminders"
-                      title="Appointment Reminders"
-                      description="Show upcoming appointment alerts"
+                      title="Recordatorios de Citas"
+                      description="Mostrar alertas de próximas citas"
                       checked={bellVisibility.appointmentReminders}
                       onChange={(v) =>
                         setBellVisibility((b) => ({ ...b, appointmentReminders: v }))
@@ -320,8 +316,8 @@ export default function Settings() {
                     />
                     <NotificationRow
                       id="bell-repair-updates"
-                      title="Repair Updates"
-                      description="Show when a repair changes status"
+                      title="Actualizaciones de Reparación"
+                      description="Mostrar cuando una reparación cambie de estatus"
                       checked={bellVisibility.repairUpdates}
                       onChange={(v) =>
                         setBellVisibility((b) => ({ ...b, repairUpdates: v }))
@@ -329,8 +325,8 @@ export default function Settings() {
                     />
                     <NotificationRow
                       id="bell-low-inventory"
-                      title="Low Inventory Alerts"
-                      description="Show low stock warnings"
+                      title="Alertas de Inventario Bajo"
+                      description="Mostrar advertencias de stock bajo"
                       checked={bellVisibility.lowInventory}
                       onChange={(v) =>
                         setBellVisibility((b) => ({ ...b, lowInventory: v }))
@@ -339,15 +335,15 @@ export default function Settings() {
                   </div>
                 </SettingsCard>
 
-                <SettingsCard title="Quiet Hours">
+                <SettingsCard title="Horario Silencioso">
                   <div
                     id="field-quiet-hours"
                     className={`grid grid-cols-2 gap-4 ${highlightClass("field-quiet-hours")}`}
                   >
-                    <Field label="From">
+                    <Field label="Desde">
                       <input type="time" defaultValue="20:00" className={inputClass} />
                     </Field>
-                    <Field label="To">
+                    <Field label="Hasta">
                       <input type="time" defaultValue="08:00" className={inputClass} />
                     </Field>
                   </div>
@@ -357,7 +353,7 @@ export default function Settings() {
                   </p>
                 </SettingsCard>
 
-                <SettingsCard title="History">
+                <SettingsCard title="Historial de Notificaciones">
                   <div
                     id="field-clear-history"
                     className={`flex items-center justify-between ${highlightClass("field-clear-history")}`}
@@ -366,7 +362,7 @@ export default function Settings() {
                       Borra todas las notificaciones anteriores de la campanita.
                     </p>
                     <button className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
-                      Clear Notification History
+                      Borrar Historial
                     </button>
                   </div>
                 </SettingsCard>
@@ -374,12 +370,12 @@ export default function Settings() {
             )}
 
             {activeCategory === "team" && (
-              <SettingsCard title="Team">
+              <SettingsCard title="Equipo">
                 <div className="divide-y divide-slate-100">
                   {[
                     { initials: "AK", name: "Alex Kovacs", role: "Admin" },
-                    { initials: "ST", name: "Sam Torres", role: "Technician" },
-                    { initials: "JM", name: "Jordan Mills", role: "Technician" },
+                    { initials: "ST", name: "Sam Torres", role: "Técnico" },
+                    { initials: "JM", name: "Jordan Mills", role: "Técnico" },
                   ].map((m) => (
                     <div key={m.name} className="flex items-center justify-between py-3">
                       <div className="flex items-center gap-3">
@@ -394,7 +390,7 @@ export default function Settings() {
                         </div>
                       </div>
                       <button className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
-                        Edit
+                        Editar
                       </button>
                     </div>
                   ))}
@@ -403,37 +399,37 @@ export default function Settings() {
                   id="field-add-member"
                   className={`mt-3 flex items-center gap-1 text-xs font-medium text-orange-500 hover:text-orange-600 ${highlightClass("field-add-member")}`}
                 >
-                  <Plus className="h-3.5 w-3.5" /> Add Team Member
+                  <Plus className="h-3.5 w-3.5" /> Agregar Miembro
                 </button>
               </SettingsCard>
             )}
 
             {activeCategory === "security" && (
               <>
-                <SettingsCard title="Change Password">
+                <SettingsCard title="Cambiar Contraseña">
                   <div id="field-change-password" className={`space-y-4 ${highlightClass("field-change-password")}`}>
-                    <Field label="Current Password">
+                    <Field label="Contraseña Actual">
                       <input type="password" className={inputClass} />
                     </Field>
                     <div className="grid grid-cols-2 gap-4">
-                      <Field label="New Password">
+                      <Field label="Nueva Contraseña">
                         <input type="password" className={inputClass} />
                       </Field>
-                      <Field label="Confirm New Password">
+                      <Field label="Confirmar Nueva Contraseña">
                         <input type="password" className={inputClass} />
                       </Field>
                     </div>
                   </div>
                 </SettingsCard>
 
-                <SettingsCard title="Two-Factor Authentication">
+                <SettingsCard title="Autenticación de Dos Factores">
                   <div
                     id="field-2fa"
                     className={`flex items-center justify-between ${highlightClass("field-2fa")}`}
                   >
                     <div>
                       <p className="text-sm font-medium text-slate-900">
-                        Require a code at login
+                        Requerir código al iniciar sesión
                       </p>
                       <p className="text-xs text-slate-400">
                         Añade una capa extra de seguridad a tu cuenta
@@ -443,7 +439,7 @@ export default function Settings() {
                   </div>
                 </SettingsCard>
 
-                <SettingsCard title="Active Sessions">
+                <SettingsCard title="Sesiones Activas">
                   <div id="field-sessions" className={highlightClass("field-sessions")}>
                     <p className="text-sm text-slate-600">
                       Windows · Chrome — sesión actual
@@ -455,7 +451,7 @@ export default function Settings() {
 
             <div className="flex justify-end">
               <button className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600">
-                Save Changes
+                Guardar Cambios
               </button>
             </div>
           </div>

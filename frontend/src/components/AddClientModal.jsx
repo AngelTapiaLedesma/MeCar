@@ -93,7 +93,7 @@ export default function AddClientModal({ open, onClose, onSave }) {
             <X className="h-5 w-5" />
           </button>
           <h2 className="text-base font-semibold text-slate-900">
-            Add Client
+            Agregar cliente
           </h2>
         </div>
 

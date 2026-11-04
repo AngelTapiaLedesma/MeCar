@@ -174,10 +174,10 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
               >
                 {isClosed ? (
                   <span className="flex items-center gap-1">
-                    <Lock className="h-3 w-3" /> Closed
+                    <Lock className="h-3 w-3" /> Cerrado
                   </span>
                 ) : (
-                  "In Progress"
+                  "En Proceso"
                 )}
               </span>
             </div>
@@ -216,7 +216,7 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
-                Date
+                Fecha
               </label>
               {readOnly ? (
                 <p className="flex items-center gap-1.5 text-sm text-slate-700">
@@ -233,7 +233,7 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
-                Technician
+                Técnico
               </label>
               {readOnly ? (
                 <p className="text-sm text-slate-700">{technician}</p>
@@ -377,7 +377,7 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
 
             <div>
               <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
-                Notes
+                Notas
               </label>
               {readOnly ? (
                 <p className="text-sm text-slate-600">{notes || "—"}</p>

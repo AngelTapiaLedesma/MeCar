@@ -78,7 +78,7 @@ export default function ClientDetail() {
   if (loading) {
     return (
       <>
-        <Topbar title="Client Details" />
+        <Topbar title="Detalles del cliente" />
         <main className="p-8">
           <p className="text-sm text-slate-400">Cargando cliente...</p>
         </main>
@@ -89,14 +89,14 @@ export default function ClientDetail() {
   if (error || !client) {
     return (
       <>
-        <Topbar title="Client not found" />
+        <Topbar title="Cliente no encontrado" />
         <main className="p-8">
           <p className="text-sm text-slate-500">
             {error
               ? `${error} — revisa que tu backend esté corriendo.`
               : "No encontramos a ese cliente."}{" "}
             <Link to="/clients" className="text-orange-500 hover:underline">
-              Volver a Clients
+              Volver a Clientes
             </Link>
           </p>
         </main>
@@ -106,7 +106,7 @@ export default function ClientDetail() {
 
   return (
     <>
-      <Topbar title="Client Details" />
+      <Topbar title="Detalles del cliente" />
 
       <main className="space-y-6 p-8">
         <Link
@@ -114,7 +114,7 @@ export default function ClientDetail() {
           className="flex w-fit items-center gap-2 text-sm text-slate-500 hover:text-slate-900"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Clients
+          Volver a Clientes
         </Link>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -140,7 +140,7 @@ export default function ClientDetail() {
                           : "bg-slate-100 text-slate-500",
                       ].join(" ")}
                     >
-                      {client.status}
+                      {client.status === "Active" ? "Activo" : client.status}
                     </span>
                   </div>
                 </div>
@@ -175,7 +175,7 @@ export default function ClientDetail() {
                 </div>
                 <div className="flex items-center gap-3 text-slate-600">
                   <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
-                  Client since {client.since}
+                  Cliente desde {client.since}
                 </div>
               </div>
             </div>

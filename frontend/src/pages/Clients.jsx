@@ -127,14 +127,14 @@ export default function Clients() {
 
   return (
     <>
-      <Topbar title="Clients" />
+      <Topbar title="Clientes" />
 
       <main className="space-y-6 p-8">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Clients</h2>
+            <h2 className="text-xl font-bold text-slate-900">Clientes</h2>
             <p className="text-sm text-slate-400">
-              {clients.length} registered clients
+              {clients.length} clientes registrados
             </p>
           </div>
           <button
@@ -142,7 +142,7 @@ export default function Clients() {
             className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600"
           >
             <Plus className="h-4 w-4" />
-            Add Client
+            Agregar cliente
           </button>
         </div>
 
@@ -152,7 +152,7 @@ export default function Clients() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search clients..."
+              placeholder="Buscar clientes..."
               className="w-full text-sm text-slate-700 outline-none placeholder:text-slate-400"
             />
           </div>
@@ -161,12 +161,12 @@ export default function Clients() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400">
-                  <th className="px-6 py-3 font-medium">Name</th>
-                  <th className="px-6 py-3 font-medium">Phone</th>
-                  <th className="px-6 py-3 font-medium">Email</th>
-                  <th className="px-6 py-3 font-medium">Vehicles</th>
-                  <th className="px-6 py-3 font-medium">Since</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
+                  <th className="px-6 py-3 font-medium">Nombre</th>
+                  <th className="px-6 py-3 font-medium">Teléfono</th>
+                  <th className="px-6 py-3 font-medium">Correo</th>
+                  <th className="px-6 py-3 font-medium">Vehículos</th>
+                  <th className="px-6 py-3 font-medium">Desde</th>
+                  <th className="px-6 py-3 font-medium">Estatus</th>
                   <th className="px-6 py-3 font-medium"></th>
                 </tr>
               </thead>
@@ -218,7 +218,7 @@ export default function Clients() {
                             : "bg-slate-100 text-slate-500",
                         ].join(" ")}
                       >
-                        {c.status}
+                        {c.status === "Active" ? "Activo" : c.status}
                       </span>
                     </td>
                     <td className="px-6 py-3 text-right">
@@ -229,7 +229,7 @@ export default function Clients() {
                 {!loading && !error && filtered.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-400">
-                      No clients match "{query}".
+                      Ningún cliente coincide con "{query}".
                     </td>
                   </tr>
                 )}
