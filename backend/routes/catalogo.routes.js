@@ -3,6 +3,7 @@ const {
     getCatalogo,
     createSeccion,
     deleteSeccion,
+    updateSeccion,
     createItem,
     updateItem,
     deleteItem,
@@ -12,6 +13,7 @@ const router = Router();
 
 router.get('/catalogo', getCatalogo);
 router.post('/catalogo/secciones', createSeccion);
+router.put('/catalogo/secciones/:id', updateSeccion);
 router.delete('/catalogo/secciones/:id', deleteSeccion);
 router.post('/catalogo/items', createItem);
 router.put('/catalogo/items/:id', updateItem);

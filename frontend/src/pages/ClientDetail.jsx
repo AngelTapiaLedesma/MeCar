@@ -16,6 +16,7 @@ import {
 import Topbar from "../components/Topbar";
 import EditClientModal from "../components/EditClientModal";
 import AddVehicleModal from "../components/AddVehicleModal";
+import VehicleDetailModal from "../components/VehicleDetailModal";
 import { fetchClientById } from "../api/clients";
 import { deleteVehicle } from "../api/vehicles";
 import { useClients } from "../context/ClientsContext";
@@ -33,6 +34,7 @@ export default function ClientDetail() {
   const [note, setNote] = useState("");
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [addVehicleOpen, setAddVehicleOpen] = useState(false);
+  const [detailVehicle, setDetailVehicle] = useState(null);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
@@ -239,7 +241,8 @@ export default function ClientDetail() {
                 {client.vehicles.map((v) => (
                   <div
                     key={v.id}
-                    className="relative flex items-start gap-3 rounded-lg border border-slate-100 p-4 hover:border-orange-200 hover:bg-orange-50/30"
+                    onClick={() => setDetailVehicle(v)}
+                    className="relative flex items-start gap-3 rounded-lg border border-slate-100 p-4 cursor-pointer hover:border-orange-200 hover:bg-orange-50/30"
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
                       <Car className="h-5 w-5" />
@@ -259,7 +262,8 @@ export default function ClientDetail() {
                       )}
                     </div>
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setDeleteError(null);
                         setConfirmDeleteId(v.id);
                       }}
@@ -269,7 +273,10 @@ export default function ClientDetail() {
                     </button>
 
                     {confirmDeleteId === v.id && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-white/95 p-3 text-center">
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-white/95 p-3 text-center"
+                      >
                         <p className="text-xs text-slate-600">
                           ¿Eliminar este vehículo? Sus tickets abiertos
                           también se borrarán. Los cerrados se quedan en el
@@ -320,6 +327,13 @@ export default function ClientDetail() {
         onClose={() => setAddVehicleOpen(false)}
         client={client}
         onCreated={loadClient}
+      />
+
+      <VehicleDetailModal
+        open={!!detailVehicle}
+        onClose={() => setDetailVehicle(null)}
+        vehicle={detailVehicle}
+        onChanged={loadClient}
       />
     </>
   );

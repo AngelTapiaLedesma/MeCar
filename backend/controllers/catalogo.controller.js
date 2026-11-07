@@ -57,6 +57,28 @@ const deleteSeccion = async (req, res) => {
     }
 };
 
+const updateSeccion = async (req, res) => {
+    const { id } = req.params;
+    const { Nombre } = req.body;
+    if (!Nombre || !Nombre.trim()) {
+        return res.status(400).json({ message: 'Nombre es obligatorio.' });
+    }
+    try {
+        const pool = await getConnection();
+        await pool.request()
+            .input('IdSeccion', sql.Int, id)
+            .input('Nombre', sql.NVarChar, Nombre.trim())
+            .query(`
+                UPDATE CatalogoSecciones
+                SET Nombre = @Nombre
+                WHERE IdSeccion = @IdSeccion
+            `);
+        res.json({ message: 'Sección actualizada.' });
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+};
+
 const createItem = async (req, res) => {
     const { IdSeccion, Nombre, PrecioBase, CostoBase } = req.body;
     if (!IdSeccion || !Nombre || !Nombre.trim()) {
@@ -121,6 +143,7 @@ module.exports = {
     getCatalogo,
     createSeccion,
     deleteSeccion,
+    updateSeccion,
     createItem,
     updateItem,
     deleteItem,

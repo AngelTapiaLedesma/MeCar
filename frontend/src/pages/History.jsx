@@ -8,6 +8,16 @@ import { fetchHistory, deleteTicket } from "../api/history";
 
 function formatDate(iso) {
   if (!iso) return "";
+  const str = String(iso).slice(0, 10);
+  const parts = str.split('-');
+  if (parts.length === 3) {
+    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -363,6 +373,8 @@ export default function History() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={loadHistory}
+        initialClientName={searchParams.get("client")}
+        initialVehicleQuery={searchParams.get("vehicle")}
       />
 
       <TicketDetailModal

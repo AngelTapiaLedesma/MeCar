@@ -16,6 +16,16 @@ export async function createSection(nombre) {
   return res.json();
 }
 
+export async function updateSection(id, nombre) {
+  const res = await fetch(`${API_URL}/catalogo/secciones/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ Nombre: nombre }),
+  });
+  if (!res.ok) throw new Error("No se pudo actualizar la sección.");
+  return res.json();
+}
+
 export async function deleteSection(id) {
   const res = await fetch(`${API_URL}/catalogo/secciones/${id}`, {
     method: "DELETE",

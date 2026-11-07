@@ -25,7 +25,13 @@ function formatDateDisplay(iso) {
   });
 }
 
-export default function NewRepairTicketModal({ open, onClose, onCreated }) {
+export default function NewRepairTicketModal({
+  open,
+  onClose,
+  onCreated,
+  initialClientName,
+  initialVehicleQuery,
+}) {
   const { clients, addClient } = useClients();
 
   const [vehicles, setVehicles] = useState([]);
@@ -86,14 +92,38 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
 
     fetchVehicles()
       .then((data) => {
-        if (!cancelled) setVehicles(data);
+        if (!cancelled) {
+          setVehicles(data);
+          if (initialVehicleQuery) {
+            const foundV = data.find(
+              (v) =>
+                v.plate.toLowerCase() === initialVehicleQuery.toLowerCase() ||
+                `${v.make} ${v.model} ${v.plate}`
+                  .toLowerCase()
+                  .includes(initialVehicleQuery.toLowerCase())
+            );
+            if (foundV) {
+              selectVehicle(foundV);
+            }
+          } else if (initialClientName) {
+            const foundC = clients.find(
+              (c) =>
+                c.name.toLowerCase() === initialClientName.toLowerCase() ||
+                c.name.toLowerCase().includes(initialClientName.toLowerCase())
+            );
+            if (foundC) {
+              setSelectedClient(foundC);
+              setClientQuery(foundC.name);
+            }
+          }
+        }
       })
       .catch(() => {});
 
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, initialVehicleQuery, initialClientName]);
 
   if (!open) return null;
 
@@ -142,9 +172,10 @@ export default function NewRepairTicketModal({ open, onClose, onCreated }) {
     setSelectedVehicle(v);
     setVehicleQuery(`${v.make} ${v.model} (${v.plate})`);
     setShowVehicleResults(false);
-    if (!selectedClient) {
-      const owner = clients.find((c) => c.id === v.clientId);
-      if (owner) setSelectedClient(owner);
+    const owner = clients.find((c) => c.id === v.clientId);
+    if (owner) {
+      setSelectedClient(owner);
+      setClientQuery(owner.name);
     }
   }
 

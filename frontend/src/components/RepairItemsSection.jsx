@@ -3,6 +3,7 @@ import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import {
   fetchCatalog,
   createSection,
+  updateSection,
   deleteSection,
   createCatalogItem,
   updateCatalogItem,
@@ -207,6 +208,13 @@ export default function RepairItemsSection({ onAdd, readOnly = false }) {
         if (s.isNew && s.Nombre.trim()) {
           const result = await createSection(s.Nombre.trim());
           tempToRealSection[s.IdSeccion] = result.IdSeccion;
+        } else if (!s.isNew) {
+          const originalSection = catalog.find((orig) => String(orig.IdSeccion) === String(s.IdSeccion));
+          if (originalSection && originalSection.Nombre !== s.Nombre) {
+            if (s.Nombre.trim()) {
+              await updateSection(s.IdSeccion, s.Nombre.trim());
+            }
+          }
         }
       }
 

@@ -1,5 +1,15 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+function formatApiDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso).slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function mapTicketFromApi(raw) {
   const vehicle = raw.Marca
     ? `${raw.Marca} ${raw.Modelo} ${raw.Anio}`
@@ -10,7 +20,7 @@ function mapTicketFromApi(raw) {
 
   return {
     id: String(raw.IdServicio),
-    date: raw.FechaServicio,
+    date: formatApiDate(raw.FechaServicio),
     vehicle,
     plate,
     vin,

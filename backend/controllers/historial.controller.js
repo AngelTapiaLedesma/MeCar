@@ -1,5 +1,15 @@
 const { getConnection, sql } = require('../db');
 
+const parseServiceDate = (val) => {
+    if (!val) return new Date();
+    const str = String(val).slice(0, 10);
+    const parts = str.split('-');
+    if (parts.length === 3) {
+        return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    }
+    return new Date(val);
+};
+
 const getHistorial = async (req, res) => {
     try {
         const pool = await getConnection();
@@ -81,7 +91,7 @@ const createTicket = async (req, res) => {
             .input('CostoManoObraTaller', sql.Decimal(10, 2), CostoManoObraTaller)
             .input('MargenGanancia', sql.Decimal(10, 2), MargenGanancia)
             .input('Tecnico', sql.NVarChar, Tecnico)
-            .input('FechaServicio', sql.DateTime, FechaServicio ? new Date(FechaServicio) : new Date())
+            .input('FechaServicio', sql.DateTime, parseServiceDate(FechaServicio))
             .input('VehiculoSnapshot', sql.NVarChar, VehiculoSnapshot)
             .input('ClienteSnapshot', sql.NVarChar, ClienteSnapshot)
             .input('VINSnapshot', sql.NVarChar, VINSnapshot)
@@ -165,7 +175,7 @@ const updateTicket = async (req, res) => {
         await new sql.Request(transaction)
             .input('IdServicio', sql.Int, id)
             .input('Tecnico', sql.NVarChar, Tecnico)
-            .input('FechaServicio', sql.DateTime, FechaServicio ? new Date(FechaServicio) : new Date())
+            .input('FechaServicio', sql.DateTime, parseServiceDate(FechaServicio))
             .input('Titulo', sql.NVarChar, Titulo)
             .input('Descripcion', sql.NVarChar, Notas || '')
             .input('CostoPiezas', sql.Decimal(10, 2), CostoPiezas)
