@@ -9,6 +9,15 @@ import {
   updateCatalogItem,
   deleteCatalogItem,
 } from "../api/catalog";
+import { sortByName } from "../utils/text";
+
+// Orden defensivo por si el backend o una respuesta vieja llega desordenada.
+function sortCatalog(data) {
+  return sortByName(data, (section) => section.Nombre).map((section) => ({
+    ...section,
+    Items: sortByName(section.Items || [], (item) => item.Nombre),
+  }));
+}
 
 // Selector para AGREGAR items al ticket: catálogo (con su modo edición) +
 // input de item custom. La lista de lo que ya se agregó NO vive aquí: está
@@ -40,8 +49,9 @@ export default function RepairItemsSection({ onAdd, readOnly = false }) {
     setCatalogLoading(true);
     fetchCatalog()
       .then((data) => {
-        setCatalog(data);
-        if (data[0]) setOpenSections({ [data[0].IdSeccion]: true });
+        const sorted = sortCatalog(data);
+        setCatalog(sorted);
+        if (sorted[0]) setOpenSections({ [sorted[0].IdSeccion]: true });
       })
       .catch(() => {})
       .finally(() => setCatalogLoading(false));
@@ -84,7 +94,10 @@ export default function RepairItemsSection({ onAdd, readOnly = false }) {
 
   function enterEditMode() {
     setDraftSections(
-      catalog.map((s) => ({ ...s, Items: s.Items.map((i) => ({ ...i })) }))
+      sortCatalog(catalog).map((s) => ({
+        ...s,
+        Items: s.Items.map((i) => ({ ...i })),
+      }))
     );
     setDeletedSectionIds([]);
     setDeletedItemIds([]);
@@ -253,7 +266,7 @@ export default function RepairItemsSection({ onAdd, readOnly = false }) {
         }
       }
 
-      const fresh = await fetchCatalog();
+      const fresh = sortCatalog(await fetchCatalog());
       setCatalog(fresh);
       setEditMode(false);
       setDraftSections([]);

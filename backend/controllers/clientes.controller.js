@@ -1,12 +1,14 @@
 const { getConnection, sql } = require('../db');
+const { normalizeTitle } = require('../utils/text');
+const { ensureVerificationReminder } = require('./recordatorios.controller');
 
 const getClientes = async (req, res) => {
     try {
         const pool = await getConnection();
         const clientesResult = await pool.request()
-            .query('SELECT * FROM Clientes ORDER BY FechaRegistro DESC');
+            .query('SELECT * FROM Clientes ORDER BY LOWER(NombreCompleto), IdCliente');
         const vehiculosResult = await pool.request()
-            .query('SELECT * FROM Vehiculos');
+            .query('SELECT * FROM Vehiculos ORDER BY LOWER(Marca), LOWER(Modelo), IdVehiculo');
 
         const clientes = clientesResult.recordset.map((cliente) => ({
             ...cliente,
@@ -36,7 +38,11 @@ const getClienteById = async (req, res) => {
 
         const vehiculosResult = await pool.request()
             .input('IdCliente', sql.Int, id)
-            .query('SELECT * FROM Vehiculos WHERE IdCliente = @IdCliente');
+            .query(`
+                SELECT * FROM Vehiculos
+                WHERE IdCliente = @IdCliente
+                ORDER BY LOWER(Marca), LOWER(Modelo), IdVehiculo
+            `);
 
         res.json({
             ...clienteResult.recordset[0],
@@ -66,11 +72,12 @@ const createCliente = async (req, res) => {
     const pool = await getConnection();
     const transaction = new sql.Transaction(pool);
 
+    const nombreNormalizado = normalizeTitle(NombreCompleto);
     try {
         await transaction.begin();
 
         const clienteResult = await new sql.Request(transaction)
-            .input('NombreCompleto', sql.NVarChar, NombreCompleto)
+            .input('NombreCompleto', sql.NVarChar, nombreNormalizado)
             .input('Telefono', sql.NVarChar, Telefono)
             .input('Email', sql.NVarChar, Email)
             .input('Direccion', sql.NVarChar, Direccion)
@@ -82,23 +89,34 @@ const createCliente = async (req, res) => {
             `);
 
         const idCliente = clienteResult.recordset[0].IdCliente;
+        const createdVehicles = [];
 
         for (const v of Vehiculos) {
-            await new sql.Request(transaction)
+            const vehicleResult = await new sql.Request(transaction)
                 .input('IdCliente', sql.Int, idCliente)
-                .input('Placas', sql.NVarChar, v.Placas)
-                .input('Marca', sql.NVarChar, v.Marca)
-                .input('Modelo', sql.NVarChar, v.Modelo)
+                .input('Placas', sql.NVarChar, String(v.Placas || '').trim())
+                .input('VIN', sql.NVarChar, String(v.VIN || '').trim() || null)
+                .input('Marca', sql.NVarChar, normalizeTitle(v.Marca))
+                .input('Modelo', sql.NVarChar, normalizeTitle(v.Modelo))
                 .input('Anio', sql.Int, v.Anio)
                 .input('Color', sql.NVarChar, v.Color)
                 .input('KilometrajeActual', sql.Int, v.KilometrajeActual)
                 .query(`
-                    INSERT INTO Vehiculos (IdCliente, Placas, Marca, Modelo, Anio, Color, KilometrajeActual)
-                    VALUES (@IdCliente, @Placas, @Marca, @Modelo, @Anio, @Color, @KilometrajeActual)
+                    INSERT INTO Vehiculos (IdCliente, Placas, VIN, Marca, Modelo, Anio, Color, KilometrajeActual)
+                    OUTPUT INSERTED.IdVehiculo, INSERTED.Placas
+                    VALUES (@IdCliente, @Placas, @VIN, @Marca, @Modelo, @Anio, @Color, @KilometrajeActual)
                 `);
+            createdVehicles.push(vehicleResult.recordset[0]);
         }
 
         await transaction.commit();
+
+        // La cita de verificación se genera después del commit para no
+        // mezclar la transacción del cliente con la de recordatorios.
+        for (const vehicle of createdVehicles) {
+            await ensureVerificationReminder(pool, vehicle);
+        }
+
         res.status(201).json({
             message: '¡Cliente registrado con éxito en el taller!',
             IdCliente: idCliente,
@@ -119,11 +137,12 @@ const updateCliente = async (req, res) => {
             .json({ message: 'NombreCompleto y Telefono son obligatorios.' });
     }
 
+    const nombreNormalizado = normalizeTitle(NombreCompleto);
     try {
         const pool = await getConnection();
         const result = await pool.request()
             .input('IdCliente', sql.Int, id)
-            .input('NombreCompleto', sql.NVarChar, NombreCompleto)
+            .input('NombreCompleto', sql.NVarChar, nombreNormalizado)
             .input('Telefono', sql.NVarChar, Telefono)
             .input('Email', sql.NVarChar, Email)
             .input('Direccion', sql.NVarChar, Direccion)

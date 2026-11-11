@@ -19,6 +19,7 @@ import AddVehicleModal from "../components/AddVehicleModal";
 import VehicleDetailModal from "../components/VehicleDetailModal";
 import { fetchClientById } from "../api/clients";
 import { deleteVehicle } from "../api/vehicles";
+import { onVehiclesChanged } from "../utils/events";
 import { useClients } from "../context/ClientsContext";
 
 export default function ClientDetail() {
@@ -54,6 +55,18 @@ export default function ClientDetail() {
 
   useEffect(() => {
     loadClient();
+    // Refresca el cliente (y el kilometraje de sus vehículos) cuando otra
+    // pantalla registra un ticket o edita un vehículo.
+    return onVehiclesChanged(() => {
+      fetchClientById(id)
+        .then((data) => {
+          if (data) {
+            setClient(data);
+            setNote(data.description ?? "");
+          }
+        })
+        .catch(() => {});
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -252,6 +265,9 @@ export default function ClientDetail() {
                         {v.make} {v.model} {v.year}
                       </p>
                       <p className="text-xs text-slate-400">{v.plate}</p>
+                      {v.vin && (
+                        <p className="text-xs font-mono text-slate-400">VIN: {v.vin}</p>
+                      )}
                       <p className="mt-1 text-xs text-slate-500">
                         Color: {v.color}
                       </p>
@@ -333,7 +349,6 @@ export default function ClientDetail() {
         open={!!detailVehicle}
         onClose={() => setDetailVehicle(null)}
         vehicle={detailVehicle}
-        onChanged={loadClient}
       />
     </>
   );

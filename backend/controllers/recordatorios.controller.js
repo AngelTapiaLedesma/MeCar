@@ -1,4 +1,56 @@
 const { getConnection, sql } = require('../db');
+const { getVerificationData } = require('../utils/verification');
+
+// Genera (si hace falta) la próxima cita de verificación de un vehículo.
+// Es idempotente: la clave única por vehículo/periodo y la verificación de
+// recordatorios ya existentes evitan duplicados aunque se llame varias veces.
+async function ensureVerificationReminder(pool, vehicle, options = {}) {
+    const data = getVerificationData(vehicle.Placas, options.referenceDate);
+    if (!data) return { created: false, reason: 'plate', data: null };
+
+    const category = await pool.request()
+        .input('Nombre', sql.NVarChar, 'Verificación')
+        .query('SELECT TOP 1 IdCategoria FROM Categorias WHERE Nombre = @Nombre');
+    if (!category.recordset.length) {
+        return { created: false, reason: 'category', data };
+    }
+
+    const key = `VERIFICACION-${vehicle.IdVehiculo}-${data.periodKey}`;
+    const result = await pool.request()
+        .input('IdVehiculo', sql.Int, vehicle.IdVehiculo)
+        .input('TipoRecordatorio', sql.NVarChar, 'Verificación')
+        .input('FechaInicio', sql.Date, data.dueDate)
+        .input('IdCategoria', sql.Int, category.recordset[0].IdCategoria)
+        .input('ClaveAutomatica', sql.NVarChar, key)
+        .input('WindowStart', sql.Date, data.windowStart)
+        .input('WindowEnd', sql.Date, data.windowEnd)
+        .query(`
+            INSERT INTO Recordatorios
+                (IdVehiculo, TipoRecordatorio, FechaInicio, EsRecurrente, IntervaloDias, Notificar, IdCategoria, EsAutomatico, ClaveAutomatica)
+            OUTPUT INSERTED.IdRecordatorio
+            SELECT
+                @IdVehiculo, @TipoRecordatorio, @FechaInicio, 0, NULL, 1, @IdCategoria, 1, @ClaveAutomatica
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM Recordatorios WITH (UPDLOCK, HOLDLOCK)
+                WHERE ClaveAutomatica = @ClaveAutomatica
+            )
+            AND NOT EXISTS (
+                SELECT 1
+                FROM Recordatorios r WITH (UPDLOCK, HOLDLOCK)
+                INNER JOIN Categorias c ON c.IdCategoria = r.IdCategoria
+                WHERE r.IdVehiculo = @IdVehiculo
+                  AND c.Nombre = 'Verificación'
+                  AND r.FechaInicio BETWEEN @WindowStart AND @WindowEnd
+            )
+        `);
+
+    return {
+        created: result.recordset.length > 0,
+        reminder: result.recordset[0] || null,
+        data,
+    };
+}
 
 const getAllRecordatorios = async (req, res) => {
     try {
@@ -6,7 +58,7 @@ const getAllRecordatorios = async (req, res) => {
         const result = await pool.request().query(`
             SELECT
                 r.*,
-                v.Placas, v.Marca, v.Modelo, v.Anio,
+                v.Placas, v.Marca, v.Modelo, v.Anio, v.VIN,
                 c.NombreCompleto AS ClienteNombre,
                 cat.Nombre AS CategoriaNombre,
                 cat.ColorClase AS CategoriaColor
@@ -14,9 +66,17 @@ const getAllRecordatorios = async (req, res) => {
             INNER JOIN Vehiculos v ON v.IdVehiculo = r.IdVehiculo
             INNER JOIN Clientes c ON c.IdCliente = v.IdCliente
             INNER JOIN Categorias cat ON cat.IdCategoria = r.IdCategoria
-            ORDER BY r.FechaInicio ASC
+            ORDER BY r.FechaInicio ASC, r.IdRecordatorio ASC
         `);
-        res.json(result.recordset);
+        res.json(result.recordset.map((reminder) => {
+            const verification = getVerificationData(reminder.Placas);
+            return {
+                ...reminder,
+                DatosVerificacion: verification,
+                ColorPlaca: verification?.color || null,
+                DiaNoCircula: verification?.noCircula || null,
+            };
+        }));
     } catch (error) {
         res.status(500).send(error.message);
     }
@@ -29,13 +89,56 @@ const getRecordatoriosByVehiculo = async (req, res) => {
         const result = await pool.request()
             .input('IdVehiculo', sql.Int, idVehiculo)
             .query(`
-                SELECT r.*, cat.Nombre AS CategoriaNombre, cat.ColorClase AS CategoriaColor
+                SELECT
+                    r.*,
+                    v.Placas,
+                    cat.Nombre AS CategoriaNombre,
+                    cat.ColorClase AS CategoriaColor
                 FROM Recordatorios r
+                INNER JOIN Vehiculos v ON v.IdVehiculo = r.IdVehiculo
                 INNER JOIN Categorias cat ON cat.IdCategoria = r.IdCategoria
                 WHERE r.IdVehiculo = @IdVehiculo
-                ORDER BY r.FechaInicio
+                ORDER BY r.FechaInicio, r.IdRecordatorio
             `);
-        res.json(result.recordset);
+        res.json(result.recordset.map((reminder) => {
+            const verification = getVerificationData(reminder.Placas);
+            return {
+                ...reminder,
+                DatosVerificacion: verification,
+                ColorPlaca: verification?.color || null,
+                DiaNoCircula: verification?.noCircula || null,
+            };
+        }));
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+};
+
+// Recorre todos los vehículos y crea las citas de verificación que falten.
+// Se usa para poner al día los vehículos que ya existían antes de esta función.
+const syncVerificationReminders = async (req, res) => {
+    try {
+        const pool = await getConnection();
+        const vehicles = await pool.request().query('SELECT IdVehiculo, Placas FROM Vehiculos');
+        let created = 0;
+
+        for (const vehicle of vehicles.recordset) {
+            try {
+                const result = await ensureVerificationReminder(pool, vehicle);
+                if (result.created) created += 1;
+            } catch (error) {
+                console.error(
+                    `No se pudo generar la verificación del vehículo ${vehicle.IdVehiculo}:`,
+                    error.message
+                );
+            }
+        }
+
+        res.json({
+            message: 'Verificaciones sincronizadas.',
+            processed: vehicles.recordset.length,
+            created,
+        });
     } catch (error) {
         res.status(500).send(error.message);
     }
@@ -144,6 +247,8 @@ const deleteRecordatorio = async (req, res) => {
 };
 
 module.exports = {
+    ensureVerificationReminder,
+    syncVerificationReminders,
     getAllRecordatorios,
     getRecordatoriosByVehiculo,
     createRecordatorio,

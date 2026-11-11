@@ -7,8 +7,10 @@ import TicketSummarySection from "./TicketSummarySection";
 import { useClients } from "../context/ClientsContext";
 import { fetchVehicles } from "../api/vehicles";
 import { createTicket } from "../api/history";
+import { notifyVehiclesChanged, onVehiclesChanged } from "../utils/events";
 
-const TECHNICIANS = ["Alex Kovacs", "Sam Torres", "Jordan Mills"];
+const MILEAGE_BELOW_CURRENT =
+  "El kilometraje insertado es menor al último, si desea ajustar el kilometraje debe hacerlo desde la pestaña del vehículo.";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -49,7 +51,7 @@ export default function NewRepairTicketModal({
   const vehicleRef = useRef(null);
 
   const [date, setDate] = useState(todayIso());
-  const [technician, setTechnician] = useState(TECHNICIANS[0]);
+  const [mileage, setMileage] = useState("");
 
   const [ticketItems, setTicketItems] = useState([]);
 
@@ -125,6 +127,23 @@ export default function NewRepairTicketModal({
     };
   }, [open, initialVehicleQuery, initialClientName]);
 
+  // Si otro ticket o la pestaña del vehículo actualiza el kilometraje,
+  // refrescamos la lista para que la selección muestre el último valor.
+  useEffect(() => {
+    if (!open) return;
+    return onVehiclesChanged(() => {
+      fetchVehicles()
+        .then((data) => {
+          setVehicles(data);
+          setSelectedVehicle((prev) => {
+            if (!prev) return prev;
+            return data.find((v) => v.id === prev.id) || prev;
+          });
+        })
+        .catch(() => {});
+    });
+  }, [open]);
+
   if (!open) return null;
 
   const filteredClients = clients.filter((c) =>
@@ -170,6 +189,7 @@ export default function NewRepairTicketModal({
 
   function selectVehicle(v) {
     setSelectedVehicle(v);
+    setMileage(v.mileage != null ? String(v.mileage) : "");
     setVehicleQuery(`${v.make} ${v.model} (${v.plate})`);
     setShowVehicleResults(false);
     const owner = clients.find((c) => c.id === v.clientId);
@@ -207,7 +227,7 @@ export default function NewRepairTicketModal({
     setShowClientResults(false);
     setShowVehicleResults(false);
     setDate(todayIso());
-    setTechnician(TECHNICIANS[0]);
+    setMileage("");
     setTicketItems([]);
     setLaborCost("");
     setLaborPrice("");
@@ -229,12 +249,30 @@ export default function NewRepairTicketModal({
       setSubmitError("Agrega al menos un item.");
       return;
     }
+
+    const parsedMileage = Number(mileage);
+    if (
+      mileage === "" ||
+      !Number.isInteger(parsedMileage) ||
+      parsedMileage < 0
+    ) {
+      setSubmitError("El kilometraje debe ser un número entero mayor o igual a 0.");
+      return;
+    }
+    if (
+      selectedVehicle.mileage != null &&
+      parsedMileage < Number(selectedVehicle.mileage)
+    ) {
+      setSubmitError(MILEAGE_BELOW_CURRENT);
+      return;
+    }
+
     setSubmitError(null);
     setSubmitting(true);
     try {
       await createTicket({
         IdVehiculo: selectedVehicle.id,
-        Tecnico: technician,
+        KilometrajeEnServicio: parsedMileage,
         FechaServicio: date,
         Items: ticketItems.map((i) => ({
           Nombre: i.name,
@@ -247,6 +285,11 @@ export default function NewRepairTicketModal({
         CostoManoObraTaller: laborCost !== "" ? laborCostVal : null,
         MargenGanancia: 0, // Ya no se usa recargo global duplicado
         Notas: notes,
+      });
+      notifyVehiclesChanged({
+        vehicleId: selectedVehicle.id,
+        mileage: parsedMileage,
+        reason: "ticket-created",
       });
       onCreated?.();
       resetAll();
@@ -409,19 +452,29 @@ export default function NewRepairTicketModal({
                 </div>
                 <div>
                   <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
-                    Técnico
+                    Kilometraje * {selectedVehicle?.mileage != null && `(último kilometraje: ${Number(selectedVehicle.mileage).toLocaleString()} km)`}
                   </label>
-                  <select
-                    value={technician}
-                    onChange={(e) => setTechnician(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
-                  >
-                    {TECHNICIANS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      required
+                      value={mileage}
+                      onChange={(e) => setMileage(e.target.value)}
+                      placeholder="Kilometraje actual"
+                      className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
+                    />
+                    {selectedVehicle?.mileage != null && (
+                      <button
+                        type="button"
+                        onClick={() => setMileage(String(selectedVehicle.mileage))}
+                        className="whitespace-nowrap rounded-lg border border-slate-200 px-2 text-xs text-slate-600 hover:bg-slate-50"
+                      >
+                        Último
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -651,7 +704,7 @@ export default function NewRepairTicketModal({
             <div className="mt-6 flex items-center gap-2 text-xs text-slate-400">
               <Calendar className="h-3.5 w-3.5" />
               {formatDateDisplay(date)}
-              <span>· por {technician.split(" ")[0]}</span>
+              {mileage && <span>· {Number(mileage).toLocaleString()} km</span>}
             </div>
           </aside>
         </div>

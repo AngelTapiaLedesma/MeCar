@@ -1,9 +1,12 @@
+import { sortByName } from "../utils/text";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export async function fetchCategorias() {
   const res = await fetch(`${API_URL}/categorias`);
   if (!res.ok) throw new Error("No se pudieron cargar las categorías.");
-  return res.json();
+  const data = await res.json();
+  return sortByName(data, (categoria) => categoria.Nombre);
 }
 
 export async function createCategoria(data) {

@@ -1,9 +1,15 @@
+import { sortByName } from "../utils/text";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export async function fetchCatalog() {
   const res = await fetch(`${API_URL}/catalogo`);
   if (!res.ok) throw new Error("No se pudo cargar el catálogo.");
-  return res.json();
+  const data = await res.json();
+  return sortByName(data, (section) => section.Nombre).map((section) => ({
+    ...section,
+    Items: sortByName(section.Items || [], (item) => item.Nombre),
+  }));
 }
 
 export async function createSection(nombre) {

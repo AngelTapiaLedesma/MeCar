@@ -9,17 +9,30 @@ import {
   X,
   FileText,
   Plus,
-  CheckCircle2,
   Eye,
   Settings,
+  RefreshCw,
 } from "lucide-react";
 import Topbar from "../components/Topbar";
 import TicketDetailModal from "../components/TicketDetailModal";
 import NewRepairTicketModal from "../components/NewRepairTicketModal";
-import { fetchAllReminders, createReminder } from "../api/reminders";
+import {
+  fetchAllReminders,
+  createReminder,
+  syncVerificationReminders,
+} from "../api/reminders";
 import { fetchHistory, updateTicket } from "../api/history";
 import { fetchVehicles } from "../api/vehicles";
 import { fetchCategorias, createCategoria } from "../api/categorias";
+import { notifyVehiclesChanged, onVehiclesChanged } from "../utils/events";
+
+const PLATE_COLORS = [
+  { label: "Amarillo", dot: "bg-yellow-400" },
+  { label: "Rosa", dot: "bg-pink-400" },
+  { label: "Rojo", dot: "bg-red-500" },
+  { label: "Verde", dot: "bg-emerald-500" },
+  { label: "Azul", dot: "bg-blue-500" },
+];
 
 // Colores predeterminados para categorías nuevas
 const PRESET_COLORS = [
@@ -36,7 +49,9 @@ const PRESET_COLORS = [
 export default function Agenda() {
   const [periodo, setPeriodo] = useState("Esta semana");
   const [categoriaFiltro, setCategoriaFiltro] = useState("Todos");
+  const [colorFiltro, setColorFiltro] = useState("Todos");
   const [vista, setVista] = useState("tabla");
+  const [syncing, setSyncing] = useState(false);
 
   const [citas, setCitas] = useState([]);
   const [tickets, setTickets] = useState([]);
@@ -68,8 +83,8 @@ export default function Agenda() {
 
   const periodos = ["Esta semana", "Próximos 15 días", "Este mes"];
 
-  function loadData() {
-    setLoading(true);
+  function loadData(silent = false) {
+    if (!silent) setLoading(true);
     setError(null);
     Promise.all([fetchAllReminders(), fetchHistory(), fetchVehicles(), fetchCategorias()])
       .then(([remindersData, historyData, vehiclesData, categoriasData]) => {
@@ -83,12 +98,18 @@ export default function Agenda() {
           setNewApptCategoryId(String(categoriasData[0].IdCategoria));
         }
       })
-      .catch((err) => setError(err.message || "No se pudo cargar la agenda."))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (!silent) setError(err.message || "No se pudo cargar la agenda.");
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   }
 
   useEffect(() => {
     loadData();
+    return onVehiclesChanged(() => loadData(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -106,6 +127,11 @@ export default function Agenda() {
 
   const citasFiltradas = citas.filter((c) => {
     if (categoriaFiltro !== "Todos" && c.categoryName !== categoriaFiltro) {
+      return false;
+    }
+    // Filtro independiente por color de placa; no afecta la creación manual
+    // de citas, solo lo que se muestra en tabla/calendario/tarjetas.
+    if (colorFiltro !== "Todos" && c.plateColor !== colorFiltro) {
       return false;
     }
     return true;
@@ -127,6 +153,22 @@ export default function Agenda() {
   }
 
   async function handleAddToExistingTicket(cita, activeTicket) {
+    const linkedVehicle =
+      vehicles.find((v) => v.id === activeTicket.vehicleId) ||
+      vehicles.find(
+        (v) => v.plate?.toLowerCase() === activeTicket.plate?.toLowerCase()
+      );
+    // Al editar un ticket hay que reenviar su kilometraje; si el ticket no lo
+    // tiene, usamos el último del vehículo.
+    const serviceMileage = activeTicket.serviceMileage ?? linkedVehicle?.mileage;
+
+    if (serviceMileage == null) {
+      alert(
+        "El ticket no tiene kilometraje registrado. Edita el ticket para agregarlo antes de continuar."
+      );
+      return;
+    }
+
     try {
       const updatedItems = [
         ...activeTicket.items.map((i) => ({
@@ -146,7 +188,7 @@ export default function Agenda() {
       ];
 
       await updateTicket(activeTicket.id, {
-        Tecnico: activeTicket.tech,
+        KilometrajeEnServicio: serviceMileage,
         FechaServicio: activeTicket.date,
         Items: updatedItems,
         CostoManoObra: activeTicket.laborCost,
@@ -158,9 +200,27 @@ export default function Agenda() {
 
       alert(`¡Servicio agregado exitosamente al Ticket #${activeTicket.id} (${activeTicket.vehicle})!`);
       setBridgeModalData(null);
-      loadData();
+      notifyVehiclesChanged({
+        vehicleId: activeTicket.vehicleId,
+        reason: "ticket-mileage",
+      });
     } catch (err) {
       alert(err.message || "No se pudo actualizar el ticket.");
+    }
+  }
+
+  async function handleSyncVerifications() {
+    setSyncing(true);
+    try {
+      const result = await syncVerificationReminders();
+      await loadData(true);
+      alert(
+        `Verificaciones sincronizadas. ${result.created} citas nuevas de ${result.processed} vehículos.`
+      );
+    } catch (err) {
+      alert(err.message || "No se pudieron sincronizar las verificaciones.");
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -244,6 +304,17 @@ export default function Agenda() {
 
             <button
               type="button"
+              onClick={handleSyncVerifications}
+              disabled={syncing}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-60"
+              title="Genera las citas de verificación que falten para los vehículos existentes"
+            >
+              <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Sincronizando..." : "Sincronizar verificaciones"}
+            </button>
+
+            <button
+              type="button"
               onClick={() => setNewCategoryModalOpen(true)}
               className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
             >
@@ -318,6 +389,41 @@ export default function Agenda() {
               ].join(" ")}
             >
               {cat.Nombre}
+            </button>
+          ))}
+        </div>
+
+        {/* Filtro independiente por color de placa */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-xs font-medium text-slate-500">
+            Color de placa:
+          </span>
+          <button
+            type="button"
+            onClick={() => setColorFiltro("Todos")}
+            className={[
+              "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+              colorFiltro === "Todos"
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+            ].join(" ")}
+          >
+            Todos
+          </button>
+          {PLATE_COLORS.map((color) => (
+            <button
+              key={color.label}
+              type="button"
+              onClick={() => setColorFiltro(color.label)}
+              className={[
+                "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                colorFiltro === color.label
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+              ].join(" ")}
+            >
+              <span className={`h-2.5 w-2.5 rounded-full ${color.dot}`} />
+              {color.label}
             </button>
           ))}
         </div>

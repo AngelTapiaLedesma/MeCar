@@ -1,4 +1,7 @@
 const { getConnection, sql } = require('../db');
+const { normalizeTitle } = require('../utils/text');
+const { getVerificationData } = require('../utils/verification');
+const { ensureVerificationReminder } = require('./recordatorios.controller');
 
 const getVehiculos = async (req, res) => {
     try {
@@ -7,9 +10,41 @@ const getVehiculos = async (req, res) => {
             SELECT v.*, c.NombreCompleto AS ClienteNombre
             FROM Vehiculos v
             INNER JOIN Clientes c ON c.IdCliente = v.IdCliente
-            ORDER BY v.Marca, v.Modelo
+            ORDER BY LOWER(v.Marca), LOWER(v.Modelo), v.IdVehiculo
         `);
-        res.json(result.recordset);
+        res.json(result.recordset.map((vehicle) => ({
+            ...vehicle,
+            DatosVerificacion: getVerificationData(vehicle.Placas),
+        })));
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+};
+
+// Devuelve un vehículo con su cliente y los datos de verificación derivados
+// de la placa. Lo usa el detalle del vehículo para refrescar kilometraje.
+const getVehiculoById = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pool = await getConnection();
+        const result = await pool.request()
+            .input('IdVehiculo', sql.Int, id)
+            .query(`
+                SELECT v.*, c.NombreCompleto AS ClienteNombre
+                FROM Vehiculos v
+                INNER JOIN Clientes c ON c.IdCliente = v.IdCliente
+                WHERE v.IdVehiculo = @IdVehiculo
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ message: 'Vehículo no encontrado.' });
+        }
+
+        const vehicle = result.recordset[0];
+        res.json({
+            ...vehicle,
+            DatosVerificacion: getVerificationData(vehicle.Placas),
+        });
     } catch (error) {
         res.status(500).send(error.message);
     }
@@ -46,9 +81,13 @@ const checkVin = async (req, res) => {
 };
 
 const createVehiculo = async (req, res) => {
-    const { IdCliente, Placas, Marca, Modelo, Anio, Color, KilometrajeActual, VIN } = req.body;
+    const { IdCliente, Placas, Anio, Color, KilometrajeActual, VIN } = req.body;
+    const PlacasNormalizadas = String(Placas || '').trim();
+    const VINNormalizado = String(VIN || '').trim() || null;
+    const MarcaNormalizada = normalizeTitle(req.body.Marca);
+    const ModeloNormalizado = normalizeTitle(req.body.Modelo);
 
-    if (!IdCliente || !Placas || !Marca || !Modelo) {
+    if (!IdCliente || !PlacasNormalizadas || !MarcaNormalizada || !ModeloNormalizado) {
         return res
             .status(400)
             .json({ message: 'IdCliente, Placas, Marca y Modelo son obligatorios.' });
@@ -58,21 +97,23 @@ const createVehiculo = async (req, res) => {
         const pool = await getConnection();
         const result = await pool.request()
             .input('IdCliente', sql.Int, IdCliente)
-            .input('Placas', sql.NVarChar, Placas)
-            .input('Marca', sql.NVarChar, Marca)
-            .input('Modelo', sql.NVarChar, Modelo)
+            .input('Placas', sql.NVarChar, PlacasNormalizadas)
+            .input('Marca', sql.NVarChar, MarcaNormalizada)
+            .input('Modelo', sql.NVarChar, ModeloNormalizado)
             .input('Anio', sql.Int, Anio)
             .input('Color', sql.NVarChar, Color)
             .input('KilometrajeActual', sql.Int, KilometrajeActual)
-            .input('VIN', sql.NVarChar, VIN || null)
+            .input('VIN', sql.NVarChar, VINNormalizado)
             .query(`
                 INSERT INTO Vehiculos (IdCliente, Placas, Marca, Modelo, Anio, Color, KilometrajeActual, VIN)
-                OUTPUT INSERTED.IdVehiculo
+                OUTPUT INSERTED.*
                 VALUES (@IdCliente, @Placas, @Marca, @Modelo, @Anio, @Color, @KilometrajeActual, @VIN)
             `);
+        const vehicle = result.recordset[0];
+        await ensureVerificationReminder(pool, vehicle);
         res.status(201).json({
             message: 'Vehículo registrado.',
-            IdVehiculo: result.recordset[0].IdVehiculo,
+            IdVehiculo: vehicle.IdVehiculo,
         });
     } catch (error) {
         res.status(500).send(error.message);
@@ -82,9 +123,13 @@ const createVehiculo = async (req, res) => {
 // NUEVO: edita los datos del vehículo (no cambia de dueño aquí).
 const updateVehiculo = async (req, res) => {
     const { id } = req.params;
-    const { Placas, Marca, Modelo, Anio, Color, KilometrajeActual, VIN } = req.body;
+    const { Placas, Anio, Color, KilometrajeActual, VIN } = req.body;
+    const PlacasNormalizadas = String(Placas || '').trim();
+    const VINNormalizado = String(VIN || '').trim() || null;
+    const MarcaNormalizada = normalizeTitle(req.body.Marca);
+    const ModeloNormalizado = normalizeTitle(req.body.Modelo);
 
-    if (!Placas || !Marca || !Modelo) {
+    if (!PlacasNormalizadas || !MarcaNormalizada || !ModeloNormalizado) {
         return res
             .status(400)
             .json({ message: 'Placas, Marca y Modelo son obligatorios.' });
@@ -94,13 +139,13 @@ const updateVehiculo = async (req, res) => {
         const pool = await getConnection();
         const result = await pool.request()
             .input('IdVehiculo', sql.Int, id)
-            .input('Placas', sql.NVarChar, Placas)
-            .input('Marca', sql.NVarChar, Marca)
-            .input('Modelo', sql.NVarChar, Modelo)
+            .input('Placas', sql.NVarChar, PlacasNormalizadas)
+            .input('Marca', sql.NVarChar, MarcaNormalizada)
+            .input('Modelo', sql.NVarChar, ModeloNormalizado)
             .input('Anio', sql.Int, Anio)
             .input('Color', sql.NVarChar, Color)
             .input('KilometrajeActual', sql.Int, KilometrajeActual)
-            .input('VIN', sql.NVarChar, VIN || null)
+            .input('VIN', sql.NVarChar, VINNormalizado)
             .query(`
                 UPDATE Vehiculos
                 SET Placas = @Placas,
@@ -117,6 +162,10 @@ const updateVehiculo = async (req, res) => {
             return res.status(404).json({ message: 'Vehículo no encontrado.' });
         }
 
+        const vehicleResult = await pool.request()
+            .input('IdVehiculo', sql.Int, id)
+            .query('SELECT * FROM Vehiculos WHERE IdVehiculo = @IdVehiculo');
+        await ensureVerificationReminder(pool, vehicleResult.recordset[0]);
         res.json({ message: 'Vehículo actualizado.' });
     } catch (error) {
         res.status(500).send(error.message);
@@ -159,4 +208,11 @@ const deleteVehiculo = async (req, res) => {
     }
 };
 
-module.exports = { getVehiculos, createVehiculo, updateVehiculo, deleteVehiculo, checkVin };
+module.exports = {
+    getVehiculos,
+    getVehiculoById,
+    createVehiculo,
+    updateVehiculo,
+    deleteVehiculo,
+    checkVin,
+};

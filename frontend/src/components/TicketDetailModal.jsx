@@ -1,17 +1,27 @@
 import { useState, useEffect } from "react";
 import { X, Lock, Car, User, Calendar, Eye, EyeOff } from "lucide-react";
 import { updateTicket } from "../api/history";
+import { fetchVehicleById } from "../api/vehicles";
+import { notifyVehiclesChanged, onVehiclesChanged } from "../utils/events";
 import RepairItemsSection from "./RepairItemsSection";
 import TicketSummarySection from "./TicketSummarySection";
 
-const TECHNICIANS = ["Alex Kovacs", "Sam Torres", "Jordan Mills"];
+const MILEAGE_BELOW_CURRENT =
+  "El kilometraje insertado es menor al último, si desea ajustar el kilometraje debe hacerlo desde la pestaña del vehículo.";
+
+function parseMileageValue(value) {
+  if (value === "" || value == null) return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+}
 
 // editable: true cuando se abrió desde "Editar" en el menú de la fila.
 // false cuando se abrió con clic directo en la fila (solo ver detalles).
 // Un ticket Closed nunca es editable, sin importar este prop.
 export default function TicketDetailModal({ open, onClose, ticket, editable, onChanged }) {
   const [date, setDate] = useState("");
-  const [technician, setTechnician] = useState(TECHNICIANS[0]);
+  const [mileage, setMileage] = useState("");
+  const [vehicleMileage, setVehicleMileage] = useState(null);
   const [items, setItems] = useState([]);
   const [laborCost, setLaborCost] = useState("");
   const [laborPrice, setLaborPrice] = useState("0");
@@ -28,7 +38,8 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
   useEffect(() => {
     if (open && ticket) {
       setDate(ticket.date ? String(ticket.date).slice(0, 10) : "");
-      setTechnician(ticket.tech || TECHNICIANS[0]);
+      setMileage(String(ticket.serviceMileage ?? ticket.vehicleMileage ?? ""));
+      setVehicleMileage(ticket.vehicleMileage ?? null);
       setItems(ticket.items.map((i) => ({ ...i })));
       setLaborPrice(String(ticket.laborCost ?? 0));
       setLaborCost(ticket.laborCostShop != null ? String(ticket.laborCostShop) : "");
@@ -36,7 +47,28 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
       setNotes(ticket.notes || "");
       setSaveError(null);
       setConfirmClose(false);
+
+      if (ticket.vehicleId) {
+        fetchVehicleById(ticket.vehicleId)
+          .then((fresh) => {
+            if (fresh) setVehicleMileage(fresh.mileage ?? null);
+          })
+          .catch(() => {});
+      }
     }
+  }, [open, ticket]);
+
+  // Refresca el último kilometraje del vehículo si cambia mientras el
+  // ticket está abierto.
+  useEffect(() => {
+    if (!open || !ticket?.vehicleId) return;
+    return onVehiclesChanged(() => {
+      fetchVehicleById(ticket.vehicleId)
+        .then((fresh) => {
+          if (fresh) setVehicleMileage(fresh.mileage ?? null);
+        })
+        .catch(() => {});
+    });
   }, [open, ticket]);
 
   useEffect(() => {
@@ -92,9 +124,30 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
     setItems((prev) => prev.filter((i) => i.id !== id));
   }
 
-  function buildPayload(estatus) {
+  function validateMileage() {
+    const parsed = parseMileageValue(mileage);
+    if (parsed == null) {
+      setSaveError("El kilometraje debe ser un número entero mayor o igual a 0.");
+      return null;
+    }
+    const original =
+      ticket.serviceMileage != null ? Number(ticket.serviceMileage) : null;
+    // El backend permite conservar el kilometraje histórico aunque sea menor
+    // al actual; solo se bloquea cuando el usuario intenta cambiarlo.
+    if (
+      vehicleMileage != null &&
+      parsed < Number(vehicleMileage) &&
+      parsed !== original
+    ) {
+      setSaveError(MILEAGE_BELOW_CURRENT);
+      return null;
+    }
+    return parsed;
+  }
+
+  function buildPayload(estatus, serviceMileage) {
     return {
-      Tecnico: technician,
+      KilometrajeEnServicio: serviceMileage,
       FechaServicio: date,
       Items: items.map((i) => ({
         Nombre: i.name,
@@ -116,10 +169,18 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
       setSaveError("Debe haber al menos un item.");
       return;
     }
+    const serviceMileage = validateMileage();
+    if (serviceMileage == null) return;
+
     setSaveError(null);
     setSaving(true);
     try {
-      await updateTicket(ticket.id, buildPayload("In Progress"));
+      await updateTicket(ticket.id, buildPayload("In Progress", serviceMileage));
+      notifyVehiclesChanged({
+        vehicleId: ticket.vehicleId,
+        mileage: serviceMileage,
+        reason: "ticket-updated",
+      });
       onChanged?.();
       onClose();
     } catch (err) {
@@ -135,10 +196,21 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
       setConfirmClose(false);
       return;
     }
+    const serviceMileage = validateMileage();
+    if (serviceMileage == null) {
+      setConfirmClose(false);
+      return;
+    }
+
     setSaveError(null);
     setClosing(true);
     try {
-      await updateTicket(ticket.id, buildPayload("Closed"));
+      await updateTicket(ticket.id, buildPayload("Closed", serviceMileage));
+      notifyVehiclesChanged({
+        vehicleId: ticket.vehicleId,
+        mileage: serviceMileage,
+        reason: "ticket-closed",
+      });
       onChanged?.();
       onClose();
     } catch (err) {
@@ -233,22 +305,29 @@ export default function TicketDetailModal({ open, onClose, ticket, editable, onC
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-semibold uppercase text-slate-400">
-                Técnico
+                Kilometraje * {vehicleMileage != null && `(último kilometraje: ${Number(vehicleMileage).toLocaleString()} km)`}
               </label>
               {readOnly ? (
-                <p className="text-sm text-slate-700">{technician}</p>
+                <p className="text-sm text-slate-700">{mileage ? `${Number(mileage).toLocaleString()} km` : "—"}</p>
               ) : (
-                <select
-                  value={technician}
-                  onChange={(e) => setTechnician(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
-                >
-                  {TECHNICIANS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    value={mileage}
+                    onChange={(e) => setMileage(e.target.value)}
+                    className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
+                  />
+                  {vehicleMileage != null && (
+                    <button
+                      type="button"
+                      onClick={() => setMileage(String(vehicleMileage))}
+                      className="whitespace-nowrap rounded-lg border border-slate-200 px-2 text-xs text-slate-600 hover:bg-slate-50"
+                    >Último</button>
+                  )}
+                </div>
               )}
             </div>
           </div>

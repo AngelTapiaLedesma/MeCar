@@ -10,20 +10,30 @@ const parseServiceDate = (val) => {
     return new Date(val);
 };
 
+const MILEAGE_BELOW_CURRENT = 'El kilometraje insertado es menor al último, si desea ajustar el kilometraje debe hacerlo desde la pestaña del vehículo.';
+
+function parseMileage(value) {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
+    const mileage = Number(value);
+    return Number.isInteger(mileage) && mileage >= 0 ? mileage : null;
+}
+
 const getHistorial = async (req, res) => {
     try {
         const pool = await getConnection();
         const serviciosResult = await pool.request().query(`
             SELECT
                 s.*,
-                v.Placas, v.Marca, v.Modelo, v.Anio,
+                v.Placas, v.Marca, v.Modelo, v.Anio, v.VIN, v.KilometrajeActual,
                 c.NombreCompleto AS ClienteNombre
             FROM HistorialServicios s
             LEFT JOIN Vehiculos v ON v.IdVehiculo = s.IdVehiculo
             LEFT JOIN Clientes c ON c.IdCliente = v.IdCliente
-            ORDER BY s.FechaServicio DESC
+            ORDER BY s.FechaServicio DESC, s.IdServicio DESC
         `);
-        const itemsResult = await pool.request().query('SELECT * FROM ServicioItems');
+        const itemsResult = await pool.request()
+            .query('SELECT * FROM ServicioItems ORDER BY IdServicio, IdServicioItem');
 
         const historial = serviciosResult.recordset.map((s) => ({
             ...s,
@@ -39,7 +49,7 @@ const getHistorial = async (req, res) => {
 const createTicket = async (req, res) => {
     const {
         IdVehiculo,
-        Tecnico,
+        KilometrajeEnServicio,
         FechaServicio,
         Items = [],
         CostoManoObra = 0,
@@ -48,10 +58,11 @@ const createTicket = async (req, res) => {
         Notas,
     } = req.body;
 
-    if (!IdVehiculo || Items.length === 0) {
+    const kilometraje = parseMileage(KilometrajeEnServicio);
+    if (!IdVehiculo || Items.length === 0 || kilometraje == null) {
         return res
             .status(400)
-            .json({ message: 'IdVehiculo y al menos un item son obligatorios.' });
+            .json({ message: 'IdVehiculo, kilometraje y al menos un item son obligatorios.' });
     }
 
     const CostoPiezas = Items.reduce((sum, i) => sum + Number(i.Precio || 0), 0);
@@ -63,11 +74,13 @@ const createTicket = async (req, res) => {
     try {
         await transaction.begin();
 
+        // Bloquea la fila del vehículo hasta el commit para que dos tickets
+        // simultáneos no lean/regresen el mismo kilometraje.
         const infoResult = await new sql.Request(transaction)
             .input('IdVehiculo', sql.Int, IdVehiculo)
             .query(`
-                SELECT v.Marca, v.Modelo, v.Anio, v.Placas, v.VIN, c.NombreCompleto AS ClienteNombre
-                FROM Vehiculos v
+                SELECT v.Marca, v.Modelo, v.Anio, v.Placas, v.VIN, v.KilometrajeActual, c.NombreCompleto AS ClienteNombre
+                FROM Vehiculos v WITH (UPDLOCK, HOLDLOCK)
                 INNER JOIN Clientes c ON c.IdCliente = v.IdCliente
                 WHERE v.IdVehiculo = @IdVehiculo
             `);
@@ -78,6 +91,10 @@ const createTicket = async (req, res) => {
         }
 
         const info = infoResult.recordset[0];
+        if (info.KilometrajeActual != null && kilometraje < Number(info.KilometrajeActual)) {
+            await transaction.rollback();
+            return res.status(422).json({ message: MILEAGE_BELOW_CURRENT, code: 'MILEAGE_BELOW_CURRENT' });
+        }
         const VehiculoSnapshot = `${info.Marca} ${info.Modelo} ${info.Anio} — ${info.Placas}`;
         const ClienteSnapshot = info.ClienteNombre;
         const VINSnapshot = info.VIN || null;
@@ -90,20 +107,32 @@ const createTicket = async (req, res) => {
             .input('CostoManoObra', sql.Decimal(10, 2), CostoManoObra)
             .input('CostoManoObraTaller', sql.Decimal(10, 2), CostoManoObraTaller)
             .input('MargenGanancia', sql.Decimal(10, 2), MargenGanancia)
-            .input('Tecnico', sql.NVarChar, Tecnico)
+            .input('KilometrajeEnServicio', sql.Int, kilometraje)
             .input('FechaServicio', sql.DateTime, parseServiceDate(FechaServicio))
             .input('VehiculoSnapshot', sql.NVarChar, VehiculoSnapshot)
             .input('ClienteSnapshot', sql.NVarChar, ClienteSnapshot)
             .input('VINSnapshot', sql.NVarChar, VINSnapshot)
             .query(`
                 INSERT INTO HistorialServicios
-                    (IdVehiculo, Titulo, Descripcion, CostoPiezas, CostoManoObra, CostoManoObraTaller, MargenGanancia, Tecnico, FechaServicio, VehiculoSnapshot, ClienteSnapshot, VINSnapshot)
+                    (IdVehiculo, Titulo, Descripcion, CostoPiezas, CostoManoObra, CostoManoObraTaller, MargenGanancia, KilometrajeEnServicio, FechaServicio, VehiculoSnapshot, ClienteSnapshot, VINSnapshot)
                 OUTPUT INSERTED.IdServicio
                 VALUES
-                    (@IdVehiculo, @Titulo, @Descripcion, @CostoPiezas, @CostoManoObra, @CostoManoObraTaller, @MargenGanancia, @Tecnico, @FechaServicio, @VehiculoSnapshot, @ClienteSnapshot, @VINSnapshot)
+                    (@IdVehiculo, @Titulo, @Descripcion, @CostoPiezas, @CostoManoObra, @CostoManoObraTaller, @MargenGanancia, @KilometrajeEnServicio, @FechaServicio, @VehiculoSnapshot, @ClienteSnapshot, @VINSnapshot)
             `);
 
         const idServicio = servicioResult.recordset[0].IdServicio;
+
+        // Nunca regresa el kilometraje del vehículo: si otro ticket ya subió
+        // el valor, esta condición simplemente no actualiza.
+        await new sql.Request(transaction)
+            .input('IdVehiculo', sql.Int, IdVehiculo)
+            .input('KilometrajeActual', sql.Int, kilometraje)
+            .query(`
+                UPDATE Vehiculos
+                SET KilometrajeActual = @KilometrajeActual
+                WHERE IdVehiculo = @IdVehiculo
+                  AND (KilometrajeActual IS NULL OR KilometrajeActual <= @KilometrajeActual)
+            `);
 
         for (const item of Items) {
             await new sql.Request(transaction)
@@ -133,7 +162,7 @@ const createTicket = async (req, res) => {
 const updateTicket = async (req, res) => {
     const { id } = req.params;
     const {
-        Tecnico,
+        KilometrajeEnServicio,
         FechaServicio,
         Items = [],
         CostoManoObra = 0,
@@ -143,8 +172,9 @@ const updateTicket = async (req, res) => {
         Estatus,
     } = req.body;
 
-    if (Items.length === 0) {
-        return res.status(400).json({ message: 'Debe haber al menos un item.' });
+    const kilometraje = parseMileage(KilometrajeEnServicio);
+    if (Items.length === 0 || kilometraje == null) {
+        return res.status(400).json({ message: 'Debe haber al menos un item y kilometraje válido.' });
     }
 
     const pool = await getConnection();
@@ -155,7 +185,11 @@ const updateTicket = async (req, res) => {
 
         const currentResult = await new sql.Request(transaction)
             .input('IdServicio', sql.Int, id)
-            .query('SELECT Estatus FROM HistorialServicios WHERE IdServicio = @IdServicio');
+            .query(`
+                SELECT IdVehiculo, Estatus, KilometrajeEnServicio
+                FROM HistorialServicios WITH (UPDLOCK, HOLDLOCK)
+                WHERE IdServicio = @IdServicio
+            `);
 
         if (currentResult.recordset.length === 0) {
             await transaction.rollback();
@@ -168,13 +202,30 @@ const updateTicket = async (req, res) => {
                 .json({ message: 'Este ticket está cerrado y ya no se puede modificar.' });
         }
 
+        const existingMileage = currentResult.recordset[0].KilometrajeEnServicio;
+        const mileageChanged = Number(existingMileage) !== kilometraje;
+        if (mileageChanged) {
+            const vehicleResult = await new sql.Request(transaction)
+                .input('IdVehiculo', sql.Int, currentResult.recordset[0].IdVehiculo)
+                .query(`
+                    SELECT KilometrajeActual
+                    FROM Vehiculos WITH (UPDLOCK, HOLDLOCK)
+                    WHERE IdVehiculo = @IdVehiculo
+                `);
+            const currentMileage = vehicleResult.recordset[0]?.KilometrajeActual;
+            if (currentMileage != null && kilometraje < Number(currentMileage)) {
+                await transaction.rollback();
+                return res.status(422).json({ message: MILEAGE_BELOW_CURRENT, code: 'MILEAGE_BELOW_CURRENT' });
+            }
+        }
+
         const CostoPiezas = Items.reduce((sum, i) => sum + Number(i.Precio || 0), 0);
         const Titulo = Items.map((i) => i.Nombre).slice(0, 3).join(', ') || 'Servicio';
         const nuevoEstatus = Estatus === 'Closed' ? 'Closed' : 'In Progress';
 
         await new sql.Request(transaction)
             .input('IdServicio', sql.Int, id)
-            .input('Tecnico', sql.NVarChar, Tecnico)
+            .input('KilometrajeEnServicio', sql.Int, kilometraje)
             .input('FechaServicio', sql.DateTime, parseServiceDate(FechaServicio))
             .input('Titulo', sql.NVarChar, Titulo)
             .input('Descripcion', sql.NVarChar, Notas || '')
@@ -185,7 +236,7 @@ const updateTicket = async (req, res) => {
             .input('Estatus', sql.NVarChar, nuevoEstatus)
             .query(`
                 UPDATE HistorialServicios
-                SET Tecnico = @Tecnico,
+                SET KilometrajeEnServicio = @KilometrajeEnServicio,
                     FechaServicio = @FechaServicio,
                     Titulo = @Titulo,
                     Descripcion = @Descripcion,
@@ -195,6 +246,17 @@ const updateTicket = async (req, res) => {
                     MargenGanancia = @MargenGanancia,
                     Estatus = @Estatus
                 WHERE IdServicio = @IdServicio
+            `);
+
+        // Igual que al crear: el kilometraje del vehículo nunca retrocede.
+        await new sql.Request(transaction)
+            .input('IdVehiculo', sql.Int, currentResult.recordset[0].IdVehiculo)
+            .input('KilometrajeActual', sql.Int, kilometraje)
+            .query(`
+                UPDATE Vehiculos
+                SET KilometrajeActual = @KilometrajeActual
+                WHERE IdVehiculo = @IdVehiculo
+                  AND (KilometrajeActual IS NULL OR KilometrajeActual <= @KilometrajeActual)
             `);
 
         // Reemplaza todas las líneas: se borran las viejas y se insertan las nuevas.

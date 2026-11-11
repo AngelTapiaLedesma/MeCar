@@ -1,13 +1,14 @@
 const { getConnection, sql } = require('../db');
+const { normalizeTitle } = require('../utils/text');
 
 // Trae el catálogo completo: cada sección con sus items anidados
 const getCatalogo = async (req, res) => {
     try {
         const pool = await getConnection();
         const seccionesResult = await pool.request()
-            .query('SELECT * FROM CatalogoSecciones ORDER BY Orden, IdSeccion');
+            .query('SELECT * FROM CatalogoSecciones ORDER BY LOWER(Nombre), IdSeccion');
         const itemsResult = await pool.request()
-            .query('SELECT * FROM CatalogoItems ORDER BY Nombre');
+            .query('SELECT * FROM CatalogoItems ORDER BY LOWER(Nombre), IdItem');
 
         const secciones = seccionesResult.recordset.map((s) => ({
             ...s,
@@ -21,8 +22,8 @@ const getCatalogo = async (req, res) => {
 };
 
 const createSeccion = async (req, res) => {
-    const { Nombre } = req.body;
-    if (!Nombre || !Nombre.trim()) {
+    const Nombre = normalizeTitle(req.body.Nombre);
+    if (!Nombre) {
         return res.status(400).json({ message: 'Nombre es obligatorio.' });
     }
     try {
@@ -59,15 +60,15 @@ const deleteSeccion = async (req, res) => {
 
 const updateSeccion = async (req, res) => {
     const { id } = req.params;
-    const { Nombre } = req.body;
-    if (!Nombre || !Nombre.trim()) {
+    const Nombre = normalizeTitle(req.body.Nombre);
+    if (!Nombre) {
         return res.status(400).json({ message: 'Nombre es obligatorio.' });
     }
     try {
         const pool = await getConnection();
         await pool.request()
             .input('IdSeccion', sql.Int, id)
-            .input('Nombre', sql.NVarChar, Nombre.trim())
+            .input('Nombre', sql.NVarChar, Nombre)
             .query(`
                 UPDATE CatalogoSecciones
                 SET Nombre = @Nombre
@@ -80,15 +81,16 @@ const updateSeccion = async (req, res) => {
 };
 
 const createItem = async (req, res) => {
-    const { IdSeccion, Nombre, PrecioBase, CostoBase } = req.body;
-    if (!IdSeccion || !Nombre || !Nombre.trim()) {
+    const { IdSeccion, PrecioBase, CostoBase } = req.body;
+    const Nombre = normalizeTitle(req.body.Nombre);
+    if (!IdSeccion || !Nombre) {
         return res.status(400).json({ message: 'IdSeccion y Nombre son obligatorios.' });
     }
     try {
         const pool = await getConnection();
         const result = await pool.request()
             .input('IdSeccion', sql.Int, IdSeccion)
-            .input('Nombre', sql.NVarChar, Nombre.trim())
+            .input('Nombre', sql.NVarChar, Nombre)
             .input('PrecioBase', sql.Decimal(10, 2), PrecioBase || 0)
             .input('CostoBase', sql.Decimal(10, 2), CostoBase || 0)
             .query(`
@@ -107,7 +109,9 @@ const createItem = async (req, res) => {
 // propia copia del precio guardada en ServicioItems.
 const updateItem = async (req, res) => {
     const { id } = req.params;
-    const { Nombre, PrecioBase, CostoBase } = req.body;
+    const { PrecioBase, CostoBase } = req.body;
+    const Nombre = normalizeTitle(req.body.Nombre);
+    if (!Nombre) return res.status(400).json({ message: 'Nombre es obligatorio.' });
     try {
         const pool = await getConnection();
         await pool.request()

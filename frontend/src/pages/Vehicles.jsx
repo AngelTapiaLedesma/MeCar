@@ -5,6 +5,7 @@ import RegisterVehicleModal from "../components/RegisterVehicleModal";
 import EditVehicleModal from "../components/EditVehicleModal";
 import VehicleDetailModal from "../components/VehicleDetailModal";
 import { fetchVehicles, deleteVehicle } from "../api/vehicles";
+import { onVehiclesChanged } from "../utils/events";
 
 function RowMenu({ vehicle, onEdit, onDeleted }) {
   const [open, setOpen] = useState(false);
@@ -114,8 +115,18 @@ export default function Vehicles() {
       .finally(() => setLoading(false));
   }
 
+  // Refresco silencioso: otra pantalla cambió kilometraje o datos del
+  // vehículo y no queremos parpadear la tabla completa.
+  function refreshVehicles() {
+    fetchVehicles()
+      .then(setVehicles)
+      .catch(() => {});
+  }
+
   useEffect(() => {
     loadVehicles();
+    return onVehiclesChanged(refreshVehicles);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredVehicles = vehicles.filter((v) => {
@@ -160,6 +171,7 @@ export default function Vehicles() {
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400">
                   <th className="px-6 py-3 font-medium">Placa</th>
+                  <th className="px-6 py-3 font-medium">VIN / Serie</th>
                   <th className="px-6 py-3 font-medium">Marca / Modelo</th>
                   <th className="px-6 py-3 font-medium">Año</th>
                   <th className="px-6 py-3 font-medium">Propietario</th>
@@ -170,21 +182,21 @@ export default function Vehicles() {
               <tbody>
                 {loading && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-400">
+                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-400">
                       Cargando vehículos...
                     </td>
                   </tr>
                 )}
                 {!loading && error && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-sm text-red-500">
+                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-red-500">
                       {error} — revisa que tu backend esté corriendo.
                     </td>
                   </tr>
                 )}
                 {!loading && !error && filteredVehicles.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-400">
+                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-400">
                       {vehicles.length === 0
                         ? 'No hay vehículos todavía. Da clic en "Registrar vehículo".'
                         : `Ningún vehículo coincide con "${query}".`}
@@ -201,6 +213,9 @@ export default function Vehicles() {
                       <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-xs font-medium text-slate-600">
                         {v.plate}
                       </span>
+                    </td>
+                    <td className="px-6 py-3 font-mono text-xs text-slate-500">
+                      {v.vin || "—"}
                     </td>
                     <td className="px-6 py-3 font-medium text-slate-900">
                       {v.make} {v.model}

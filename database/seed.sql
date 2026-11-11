@@ -23,10 +23,21 @@ VALUES
 (2, 'Cambio de Balatas', 'Cambio de balatas delanteras marca TRW y rectificado de discos.', 900.00, 500.00, 119800, DATEADD(day, -15, GETDATE())),
 (3, 'Revisión General', 'Revisión de niveles, suspensión y frenos. Todo en orden.', 0.00, 300.00, 34900, DATEADD(day, -5, GETDATE()));
 
--- 4. Insertamos Recordatorios (El calendario de tu papá)
-INSERT INTO Recordatorios (IdVehiculo, TipoRecordatorio, FechaVencimiento, Completado)
+-- 4. Insertamos las categorías base (necesarias para los recordatorios)
+IF NOT EXISTS (SELECT 1 FROM Categorias)
+BEGIN
+    INSERT INTO Categorias (Nombre, ColorClase) VALUES
+    ('Mantenimiento', 'bg-emerald-50 text-emerald-600 border-emerald-200'),
+    ('Reparación', 'bg-orange-50 text-orange-600 border-orange-200'),
+    ('Verificación', 'bg-blue-50 text-blue-600 border-blue-200'),
+    ('Diagnóstico', 'bg-purple-50 text-purple-600 border-purple-200');
+END
+GO
+
+-- 5. Insertamos Recordatorios (El calendario de tu papá)
+INSERT INTO Recordatorios (IdVehiculo, TipoRecordatorio, FechaInicio, IdCategoria)
 VALUES 
-(1, 'Verificación Vehicular', DATEADD(day, 12, GETDATE()), 0), -- Vence en 12 días
-(1, 'Cambio de Aceite', DATEADD(day, 60, GETDATE()), 0),      -- Vence en 2 meses
-(2, 'Renovación de Seguro', DATEADD(day, 5, GETDATE()), 0),    -- Vence en 5 días
-(3, 'Servicio de Agencia 40k', DATEADD(day, 180, GETDATE()), 0); -- Vence en 6 meses
+(1, 'Verificación Vehicular', CAST(DATEADD(day, 12, GETDATE()) AS DATE), (SELECT IdCategoria FROM Categorias WHERE Nombre = 'Verificación')),
+(1, 'Cambio de Aceite', CAST(DATEADD(day, 60, GETDATE()) AS DATE), (SELECT IdCategoria FROM Categorias WHERE Nombre = 'Mantenimiento')),
+(2, 'Renovación de Seguro', CAST(DATEADD(day, 5, GETDATE()) AS DATE), (SELECT IdCategoria FROM Categorias WHERE Nombre = 'Mantenimiento')),
+(3, 'Servicio de Agencia 40k', CAST(DATEADD(day, 180, GETDATE()) AS DATE), (SELECT IdCategoria FROM Categorias WHERE Nombre = 'Mantenimiento'));

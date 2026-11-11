@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const {
+    syncVerificationReminders,
     getAllRecordatorios,
     getRecordatoriosByVehiculo,
     createRecordatorio,
@@ -10,6 +11,7 @@ const {
 const router = Router();
 
 router.get('/recordatorios', getAllRecordatorios);
+router.post('/recordatorios/sync-verificaciones', syncVerificationReminders);
 router.get('/vehiculos/:idVehiculo/recordatorios', getRecordatoriosByVehiculo);
 router.post('/recordatorios', createRecordatorio);
 router.put('/recordatorios/:id', updateRecordatorio);

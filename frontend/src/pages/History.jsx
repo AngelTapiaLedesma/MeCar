@@ -5,6 +5,7 @@ import Topbar from "../components/Topbar";
 import NewRepairTicketModal from "../components/NewRepairTicketModal";
 import TicketDetailModal from "../components/TicketDetailModal";
 import { fetchHistory, deleteTicket } from "../api/history";
+import { onVehiclesChanged } from "../utils/events";
 
 function formatDate(iso) {
   if (!iso) return "";
@@ -152,8 +153,16 @@ export default function History() {
       .finally(() => setLoading(false));
   }
 
+  function refreshHistory() {
+    fetchHistory()
+      .then(setTickets)
+      .catch(() => {});
+  }
+
   useEffect(() => {
     loadHistory();
+    return onVehiclesChanged(refreshHistory);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function openView(ticket) {
@@ -295,7 +304,7 @@ export default function History() {
                   <th className="px-6 py-3 font-medium">Vehículo</th>
                   <th className="px-6 py-3 font-medium">Cliente</th>
                   <th className="px-6 py-3 font-medium">Tipo de Servicio</th>
-                  <th className="px-6 py-3 font-medium">Técnico</th>
+                  <th className="px-6 py-3 font-medium">Kilometraje</th>
                   <th className="px-6 py-3 font-medium">Costo</th>
                   <th className="px-6 py-3 font-medium">Estatus</th>
                   <th className="px-6 py-3 font-medium"></th>
@@ -343,7 +352,11 @@ export default function History() {
                     <td className="px-6 py-3 text-slate-700">
                       {t.items.map((i) => i.name).join(", ") || "—"}
                     </td>
-                    <td className="px-6 py-3 text-slate-600">{t.tech}</td>
+                    <td className="px-6 py-3 text-slate-600">
+                      {t.serviceMileage != null
+                        ? `${Number(t.serviceMileage).toLocaleString()} km`
+                        : "—"}
+                    </td>
                     <td className="px-6 py-3 font-medium text-slate-900">
                       ${t.total.toFixed(2)}
                     </td>

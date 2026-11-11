@@ -40,7 +40,22 @@ export async function fetchAllReminders() {
     categoryId: raw.IdCategoria,
     categoryName: raw.CategoriaNombre,
     categoryColor: raw.CategoriaColor,
+    automatic: !!raw.EsAutomatico,
+    plateColor: raw.ColorPlaca || "",
+    noCirculaDay: raw.DiaNoCircula || "",
   }));
+}
+
+// Crea las citas de verificación que falten para los vehículos existentes.
+export async function syncVerificationReminders() {
+  const res = await fetch(`${API_URL}/recordatorios/sync-verificaciones`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(message || "No se pudieron sincronizar las verificaciones.");
+  }
+  return res.json();
 }
 
 export async function createReminder(form) {

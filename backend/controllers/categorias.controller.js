@@ -1,4 +1,5 @@
 const { getConnection, sql } = require('../db');
+const { normalizeTitle } = require('../utils/text');
 
 // Obtener todas las categorías
 const getAllCategorias = async (req, res) => {
@@ -7,7 +8,7 @@ const getAllCategorias = async (req, res) => {
         const result = await pool.request().query(`
             SELECT IdCategoria, Nombre, ColorClase, FechaCreacion
             FROM Categorias
-            ORDER BY Nombre
+            ORDER BY LOWER(Nombre), IdCategoria
         `);
         res.json(result.recordset);
     } catch (error) {
@@ -17,7 +18,8 @@ const getAllCategorias = async (req, res) => {
 
 // Crear nueva categoría
 const createCategoria = async (req, res) => {
-    const { Nombre, ColorClase } = req.body;
+    const { ColorClase } = req.body;
+    const Nombre = normalizeTitle(req.body.Nombre);
 
     if (!Nombre || !ColorClase) {
         return res.status(400).json({ message: 'Nombre y ColorClase son obligatorios.' });
@@ -45,7 +47,8 @@ const createCategoria = async (req, res) => {
 // Actualizar categoría
 const updateCategoria = async (req, res) => {
     const { id } = req.params;
-    const { Nombre, ColorClase } = req.body;
+    const { ColorClase } = req.body;
+    const Nombre = normalizeTitle(req.body.Nombre);
 
     if (!Nombre || !ColorClase) {
         return res.status(400).json({ message: 'Nombre y ColorClase son obligatorios.' });

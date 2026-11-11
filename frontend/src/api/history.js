@@ -1,3 +1,5 @@
+import { readApiError } from "./http";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 function formatApiDate(iso) {
@@ -20,12 +22,15 @@ function mapTicketFromApi(raw) {
 
   return {
     id: String(raw.IdServicio),
+    vehicleId: raw.IdVehiculo != null ? String(raw.IdVehiculo) : null,
     date: formatApiDate(raw.FechaServicio),
     vehicle,
     plate,
     vin,
     client,
     tech: raw.Tecnico || "",
+    serviceMileage: raw.KilometrajeEnServicio ?? null,
+    vehicleMileage: raw.KilometrajeActual ?? null,
     status: raw.Estatus,
     partsCost: Number(raw.CostoPiezas) || 0,
     laborCost: Number(raw.CostoManoObra) || 0,
@@ -61,8 +66,7 @@ export async function createTicket(payload) {
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    const message = await res.text();
-    throw new Error(message || "No se pudo crear el ticket.");
+    throw new Error(await readApiError(res, "No se pudo crear el ticket."));
   }
   return res.json();
 }
@@ -74,8 +78,7 @@ export async function updateTicket(id, payload) {
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    const message = await res.text();
-    throw new Error(message || "No se pudo actualizar el ticket.");
+    throw new Error(await readApiError(res, "No se pudo actualizar el ticket."));
   }
   return res.json();
 }
@@ -83,8 +86,7 @@ export async function updateTicket(id, payload) {
 export async function deleteTicket(id) {
   const res = await fetch(`${API_URL}/historial/${id}`, { method: "DELETE" });
   if (!res.ok) {
-    const message = await res.text();
-    throw new Error(message || "No se pudo eliminar el ticket.");
+    throw new Error(await readApiError(res, "No se pudo eliminar el ticket."));
   }
   return res.json();
 }

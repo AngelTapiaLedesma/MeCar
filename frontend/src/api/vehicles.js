@@ -1,3 +1,5 @@
+import { notifyVehiclesChanged } from "../utils/events";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 function mapVehicleFromApi(raw) {
@@ -12,6 +14,9 @@ function mapVehicleFromApi(raw) {
     year: raw.Anio,
     color: raw.Color || "",
     mileage: raw.KilometrajeActual ?? null,
+    verification: raw.DatosVerificacion || null,
+    plateColor: raw.DatosVerificacion?.color || "",
+    noCirculaDay: raw.DatosVerificacion?.noCircula || "",
   };
 }
 
@@ -20,6 +25,15 @@ export async function fetchVehicles() {
   if (!res.ok) throw new Error("No se pudo cargar la lista de vehículos.");
   const data = await res.json();
   return data.map(mapVehicleFromApi);
+}
+
+export async function fetchVehicleById(id) {
+  if (id == null) return null;
+  const res = await fetch(`${API_URL}/vehiculos/${id}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("No se pudo cargar el vehículo.");
+  const data = await res.json();
+  return mapVehicleFromApi(data);
 }
 
 export async function checkVin(vin, excludeId) {
@@ -51,7 +65,7 @@ export async function createVehicle(form) {
     throw new Error(message || "No se pudo registrar el vehículo.");
   }
   const result = await res.json();
-  return mapVehicleFromApi({
+  const created = mapVehicleFromApi({
     IdVehiculo: result.IdVehiculo,
     IdCliente: form.clientId,
     ClienteNombre: form.clientName || "",
@@ -63,6 +77,8 @@ export async function createVehicle(form) {
     Color: form.color,
     KilometrajeActual: form.mileage,
   });
+  notifyVehiclesChanged({ vehicleId: created.id, reason: "created" });
+  return created;
 }
 
 export async function updateVehicle(id, form) {
@@ -83,7 +99,9 @@ export async function updateVehicle(id, form) {
     const message = await res.text();
     throw new Error(message || "No se pudo actualizar el vehículo.");
   }
-  return res.json();
+  const result = await res.json();
+  notifyVehiclesChanged({ vehicleId: String(id), reason: "updated" });
+  return result;
 }
 
 export async function deleteVehicle(id) {
@@ -92,5 +110,7 @@ export async function deleteVehicle(id) {
     const message = await res.text();
     throw new Error(message || "No se pudo eliminar el vehículo.");
   }
-  return res.json();
+  const result = await res.json();
+  notifyVehiclesChanged({ vehicleId: String(id), reason: "deleted" });
+  return result;
 }

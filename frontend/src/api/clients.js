@@ -53,6 +53,7 @@ function mapClientFromApi(raw) {
       model: v.Modelo,
       year: v.Anio,
       plate: v.Placas,
+      vin: v.VIN || "",
       color: v.Color || "",
       mileage: v.KilometrajeActual ?? null,
     })),
@@ -68,6 +69,7 @@ function mapClientToApi(form) {
     Notas: form.description,
     Vehiculos: (form.vehicles || []).map((v) => ({
       Placas: v.plate,
+      VIN: v.vin,
       Marca: v.make,
       Modelo: v.model,
       Anio: v.year,

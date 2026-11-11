@@ -21,6 +21,8 @@ import {
   deleteReminder,
 } from "../api/reminders";
 import { fetchCategorias } from "../api/categorias";
+import { fetchVehicleById } from "../api/vehicles";
+import { onVehiclesChanged } from "../utils/events";
 
 const WEEKDAYS = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
 const MONTH_NAMES = [
@@ -72,6 +74,7 @@ const emptyForm = {
 
 export default function VehicleDetailModal({ open, onClose, vehicle }) {
   const navigate = useNavigate();
+  const [currentVehicle, setCurrentVehicle] = useState(vehicle);
   const [reminders, setReminders] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -107,6 +110,15 @@ export default function VehicleDetailModal({ open, onClose, vehicle }) {
     return map;
   }, [reminders, viewYear, viewMonth]);
 
+  function loadVehicle() {
+    if (!vehicle) return;
+    fetchVehicleById(vehicle.id)
+      .then((fresh) => {
+        if (fresh) setCurrentVehicle(fresh);
+      })
+      .catch(() => {});
+  }
+
   function loadReminders() {
     if (!vehicle) return;
     setLoading(true);
@@ -126,6 +138,8 @@ export default function VehicleDetailModal({ open, onClose, vehicle }) {
 
   useEffect(() => {
     if (open && vehicle) {
+      setCurrentVehicle(vehicle);
+      loadVehicle();
       loadReminders();
       setSelectedDay(null);
       setViewYear(today.getFullYear());
@@ -133,6 +147,14 @@ export default function VehicleDetailModal({ open, onClose, vehicle }) {
       setShowForm(false);
       setEditingId(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, vehicle]);
+
+  // Mantiene el kilometraje y los datos del vehículo al día si otra pantalla
+  // (por ejemplo un ticket) los actualiza mientras el detalle está abierto.
+  useEffect(() => {
+    if (!open || !vehicle) return;
+    return onVehiclesChanged(() => loadVehicle());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, vehicle]);
 
@@ -146,6 +168,8 @@ export default function VehicleDetailModal({ open, onClose, vehicle }) {
   }, [open, onClose]);
 
   if (!open || !vehicle) return null;
+
+  const displayVehicle = currentVehicle || vehicle;
 
   function resetForm() {
     setForm(emptyForm);
@@ -277,19 +301,19 @@ export default function VehicleDetailModal({ open, onClose, vehicle }) {
               </span>
               <div className="text-center">
                 <h2 className="text-base font-semibold text-slate-900">
-                  {vehicle.make} {vehicle.model} {vehicle.year}
+                  {displayVehicle.make} {displayVehicle.model} {displayVehicle.year}
                 </h2>
                 <p className="text-xs text-slate-400">
-                  {vehicle.plate} · {vehicle.clientName}
+                  {displayVehicle.plate} · {displayVehicle.clientName}
                 </p>
-                {vehicle.vin && (
-                  <p className="mt-0.5 text-xs font-mono text-slate-500">VIN: {vehicle.vin}</p>
-                )}
+                <p className="mt-0.5 text-xs font-mono text-slate-500">
+                  VIN: {displayVehicle.vin || "—"}
+                </p>
               </div>
             </div>
             <button
               onClick={() => {
-                navigate(`/history?vehicle=${encodeURIComponent(vehicle.plate)}`);
+                navigate(`/history?vehicle=${encodeURIComponent(displayVehicle.plate)}`);
                 onClose();
               }}
               className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-600 hover:bg-orange-100"
@@ -304,23 +328,65 @@ export default function VehicleDetailModal({ open, onClose, vehicle }) {
             <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase text-slate-400">Color</p>
-                <p className="text-slate-700">{vehicle.color || "—"}</p>
+                <p className="text-slate-700">{displayVehicle.color || "—"}</p>
               </div>
               <div>
                 <p className="text-[11px] font-semibold uppercase text-slate-400">Kilometraje</p>
                 <p className="text-slate-700">
-                  {vehicle.mileage != null ? `${vehicle.mileage.toLocaleString()} km` : "—"}
+                  {displayVehicle.mileage != null
+                    ? `${displayVehicle.mileage.toLocaleString()} km`
+                    : "—"}
                 </p>
               </div>
               <div>
                 <p className="text-[11px] font-semibold uppercase text-slate-400">Propietario</p>
-                <p className="text-orange-500">{vehicle.clientName}</p>
+                <p className="text-orange-500">{displayVehicle.clientName}</p>
               </div>
               <div>
                 <p className="text-[11px] font-semibold uppercase text-slate-400">Placa</p>
-                <p className="text-slate-700">{vehicle.plate}</p>
+                <p className="text-slate-700">{displayVehicle.plate}</p>
               </div>
             </div>
+
+            {displayVehicle.verification && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Verificación
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase text-slate-400">
+                      Color de placa
+                    </p>
+                    <p className="text-slate-700">{displayVehicle.verification.color}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase text-slate-400">
+                      No circula
+                    </p>
+                    <p className="text-slate-700">{displayVehicle.verification.noCircula}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase text-slate-400">
+                      Periodo
+                    </p>
+                    <p className="text-slate-700">{displayVehicle.verification.periodLabel}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase text-slate-400">
+                      Ventana
+                    </p>
+                    <p className="text-slate-700">
+                      {displayVehicle.verification.windowStart} – {displayVehicle.verification.windowEnd}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-slate-400">
+                  {displayVehicle.verification.semesterLabel} · Próxima cita:{" "}
+                  {displayVehicle.verification.dueDate}
+                </p>
+              </div>
+            )}
 
             {/* Reminders section */}
             <div>
