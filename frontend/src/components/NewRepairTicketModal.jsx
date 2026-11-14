@@ -137,7 +137,15 @@ export default function NewRepairTicketModal({
           setVehicles(data);
           setSelectedVehicle((prev) => {
             if (!prev) return prev;
-            return data.find((v) => v.id === prev.id) || prev;
+            const refreshed = data.find((v) => v.id === prev.id);
+            if (!refreshed) return null;
+            setMileage((currentMileage) => {
+              const oldVehicleMileage = prev.mileage == null ? "" : String(prev.mileage);
+              return currentMileage === oldVehicleMileage
+                ? (refreshed.mileage == null ? "" : String(refreshed.mileage))
+                : currentMileage;
+            });
+            return refreshed;
           });
         })
         .catch(() => {});
@@ -184,6 +192,7 @@ export default function NewRepairTicketModal({
     if (selectedVehicle && selectedVehicle.clientId !== c.id) {
       setSelectedVehicle(null);
       setVehicleQuery("");
+      setMileage("");
     }
   }
 

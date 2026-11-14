@@ -9,12 +9,12 @@ const stats = [
 ];
 
 const activeRepairs = [
-  { vehicle: "Honda Civic 2019", plate: "MRX-4421", owner: "Sarah Thompson", type: "Servicio Completo", tech: "Alex Kovacs", status: "En Proceso" },
-  { vehicle: "BMW 3 Series 2020", plate: "BWM-3398", owner: "James Chen", type: "Diagnóstico de Motor", tech: "Alex Kovacs", status: "En Proceso" },
-  { vehicle: "Nissan Altima 2023", plate: "NIS-9923", owner: "Nathan Okafor", type: "Reparación de A/C", tech: "Sam Torres", status: "En Proceso" },
-  { vehicle: "Audi A4 2018", plate: "ADI-7754", owner: "David Williams", type: "Revisión de Suspensión", tech: "Alex Kovacs", status: "En Proceso" },
-  { vehicle: "Kia Sportage 2020", plate: "KIA-7743", owner: "James Chen", type: "Servicio de Transmisión", tech: "Sam Torres", status: "En Proceso" },
-  { vehicle: "Subaru Outback 2023", plate: "SUB-1198", owner: "Laura Schneider", type: "Cambio de Refrigerante", tech: "Jordan Mills", status: "En Proceso" },
+  { vehicle: "Honda Civic 2019", plate: "MRX-4421", owner: "Sarah Thompson", type: "Servicio Completo", mileage: 82450, status: "En Proceso" },
+  { vehicle: "BMW 3 Series 2020", plate: "BWM-3398", owner: "James Chen", type: "Diagnóstico de Motor", mileage: 63800, status: "En Proceso" },
+  { vehicle: "Nissan Altima 2023", plate: "NIS-9923", owner: "Nathan Okafor", type: "Reparación de A/C", mileage: 31025, status: "En Proceso" },
+  { vehicle: "Audi A4 2018", plate: "ADI-7754", owner: "David Williams", type: "Revisión de Suspensión", mileage: 97600, status: "En Proceso" },
+  { vehicle: "Kia Sportage 2020", plate: "KIA-7743", owner: "James Chen", type: "Servicio de Transmisión", mileage: 71940, status: "En Proceso" },
+  { vehicle: "Subaru Outback 2023", plate: "SUB-1198", owner: "Laura Schneider", type: "Cambio de Refrigerante", mileage: 42800, status: "En Proceso" },
 ];
 
 const upcomingEvents = [
@@ -134,7 +134,7 @@ export default function Dashboard() {
                       <th className="px-6 py-3 font-medium">Vehículo</th>
                       <th className="px-6 py-3 font-medium">Propietario</th>
                       <th className="px-6 py-3 font-medium">Tipo</th>
-                      <th className="px-6 py-3 font-medium">Técnico</th>
+                      <th className="px-6 py-3 font-medium">Kilometraje</th>
                       <th className="px-6 py-3 font-medium">Estatus</th>
                     </tr>
                   </thead>
@@ -157,7 +157,7 @@ export default function Dashboard() {
                           {r.type}
                         </td>
                         <td className="px-6 py-3 text-slate-600">
-                          {r.tech}
+                          {r.mileage != null ? `${r.mileage.toLocaleString()} km` : "—"}
                         </td>
                         <td className="px-6 py-3">
                           <span className="rounded-md bg-orange-50 px-2 py-1 text-xs font-medium text-orange-600">

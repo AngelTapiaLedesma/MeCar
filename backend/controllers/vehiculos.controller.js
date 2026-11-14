@@ -155,6 +155,7 @@ const updateVehiculo = async (req, res) => {
                     Color = @Color,
                     KilometrajeActual = @KilometrajeActual,
                     VIN = @VIN
+                OUTPUT DELETED.Placas AS PlacasAnteriores
                 WHERE IdVehiculo = @IdVehiculo
             `);
 
@@ -165,7 +166,22 @@ const updateVehiculo = async (req, res) => {
         const vehicleResult = await pool.request()
             .input('IdVehiculo', sql.Int, id)
             .query('SELECT * FROM Vehiculos WHERE IdVehiculo = @IdVehiculo');
-        await ensureVerificationReminder(pool, vehicleResult.recordset[0]);
+        const vehicle = vehicleResult.recordset[0];
+
+        // Solo reconciliamos la cita automática cuando cambia la placa;
+        // una edición de color o kilometraje no debe borrar una cita manual
+        // de verificación que coincida con la ventana vigente.
+        const previousPlate = result.recordset[0]?.PlacasAnteriores;
+        if (previousPlate !== vehicle.Placas) {
+            await pool.request()
+                .input('IdVehiculo', sql.Int, id)
+                .query(`
+                    DELETE FROM Recordatorios
+                    WHERE IdVehiculo = @IdVehiculo
+                      AND EsAutomatico = 1
+                `);
+        }
+        await ensureVerificationReminder(pool, vehicle);
         res.json({ message: 'Vehículo actualizado.' });
     } catch (error) {
         res.status(500).send(error.message);

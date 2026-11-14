@@ -1,3 +1,5 @@
+import { normalizeTitle } from "../utils/text";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const AVATAR_COLORS = [
@@ -62,7 +64,7 @@ function mapClientFromApi(raw) {
 
 function mapClientToApi(form) {
   return {
-    NombreCompleto: form.name,
+    NombreCompleto: normalizeTitle(form.name),
     Telefono: form.phone,
     Email: form.email,
     Direccion: form.address,
@@ -112,7 +114,7 @@ export async function updateClient(id, form) {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      NombreCompleto: form.name,
+      NombreCompleto: normalizeTitle(form.name),
       Telefono: form.phone,
       Email: form.email,
       Direccion: form.address,

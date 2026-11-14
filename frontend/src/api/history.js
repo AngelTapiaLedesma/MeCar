@@ -28,7 +28,6 @@ function mapTicketFromApi(raw) {
     plate,
     vin,
     client,
-    tech: raw.Tecnico || "",
     serviceMileage: raw.KilometrajeEnServicio ?? null,
     vehicleMileage: raw.KilometrajeActual ?? null,
     status: raw.Estatus,

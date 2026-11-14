@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
+import { normalizeTitle } from "../utils/text";
 
 const emptyVehicle = { make: "", model: "", year: "", plate: "", vin: "", color: "", mileage: "" };
 const emptyForm = { name: "", phone: "", email: "", address: "", description: "" };
@@ -62,8 +63,8 @@ export default function AddClientModal({ open, onClose, onSave }) {
     const cleanVehicles = vehicles
       .filter((v) => v.make.trim() || v.model.trim())
       .map((v) => ({
-        make: v.make.trim(),
-        model: v.model.trim(),
+        make: normalizeTitle(v.make),
+        model: normalizeTitle(v.model),
         year: Number(v.year) || undefined,
         plate: v.plate.trim(),
         vin: v.vin.trim() || undefined,

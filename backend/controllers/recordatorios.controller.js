@@ -16,6 +16,19 @@ async function ensureVerificationReminder(pool, vehicle, options = {}) {
     }
 
     const key = `VERIFICACION-${vehicle.IdVehiculo}-${data.periodKey}`;
+
+    // Mantiene una sola cita automática pendiente: descarta las generadas para
+    // periodos anteriores o para una placa anterior, sin tocar las manuales.
+    await pool.request()
+        .input('IdVehiculo', sql.Int, vehicle.IdVehiculo)
+        .input('ClaveAutomatica', sql.NVarChar, key)
+        .query(`
+            DELETE FROM Recordatorios
+            WHERE IdVehiculo = @IdVehiculo
+              AND EsAutomatico = 1
+              AND (ClaveAutomatica IS NULL OR ClaveAutomatica <> @ClaveAutomatica)
+        `);
+
     const result = await pool.request()
         .input('IdVehiculo', sql.Int, vehicle.IdVehiculo)
         .input('TipoRecordatorio', sql.NVarChar, 'Verificación')
@@ -24,6 +37,7 @@ async function ensureVerificationReminder(pool, vehicle, options = {}) {
         .input('ClaveAutomatica', sql.NVarChar, key)
         .input('WindowStart', sql.Date, data.windowStart)
         .input('WindowEnd', sql.Date, data.windowEnd)
+        .input('AutoKeyPrefix', sql.NVarChar, `VERIFICACION-${vehicle.IdVehiculo}-%`)
         .query(`
             INSERT INTO Recordatorios
                 (IdVehiculo, TipoRecordatorio, FechaInicio, EsRecurrente, IntervaloDias, Notificar, IdCategoria, EsAutomatico, ClaveAutomatica)
@@ -42,6 +56,7 @@ async function ensureVerificationReminder(pool, vehicle, options = {}) {
                 WHERE r.IdVehiculo = @IdVehiculo
                   AND c.Nombre = 'Verificación'
                   AND r.FechaInicio BETWEEN @WindowStart AND @WindowEnd
+                  AND (r.EsAutomatico = 0 OR r.ClaveAutomatica LIKE @AutoKeyPrefix)
             )
         `);
 
@@ -177,9 +192,9 @@ const createRecordatorio = async (req, res) => {
             .input('Notificar', sql.Bit, Notificar === false ? 0 : 1)
             .input('IdCategoria', sql.Int, IdCategoria)
             .query(`
-                INSERT INTO Recordatorios (IdVehiculo, TipoRecordatorio, FechaInicio, EsRecurrente, IntervaloDias, Notificar, IdCategoria)
+                INSERT INTO Recordatorios (IdVehiculo, TipoRecordatorio, FechaInicio, EsRecurrente, IntervaloDias, Notificar, IdCategoria, EsAutomatico, ClaveAutomatica)
                 OUTPUT INSERTED.IdRecordatorio
-                VALUES (@IdVehiculo, @TipoRecordatorio, @FechaInicio, @EsRecurrente, @IntervaloDias, @Notificar, @IdCategoria)
+                VALUES (@IdVehiculo, @TipoRecordatorio, @FechaInicio, @EsRecurrente, @IntervaloDias, @Notificar, @IdCategoria, 0, NULL)
             `);
         res.status(201).json({ IdRecordatorio: result.recordset[0].IdRecordatorio });
     } catch (error) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { Fragment, useState, useEffect } from "react";
 import {
   Calendar as CalendarIcon,
   Table,
@@ -12,6 +12,10 @@ import {
   Eye,
   Settings,
   RefreshCw,
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import Topbar from "../components/Topbar";
 import TicketDetailModal from "../components/TicketDetailModal";
@@ -19,6 +23,8 @@ import NewRepairTicketModal from "../components/NewRepairTicketModal";
 import {
   fetchAllReminders,
   createReminder,
+  updateReminder,
+  deleteReminder,
   syncVerificationReminders,
 } from "../api/reminders";
 import { fetchHistory, updateTicket } from "../api/history";
@@ -63,6 +69,9 @@ export default function Agenda() {
   // Modales
   const [bridgeModalData, setBridgeModalData] = useState(null);
   const [viewTicketModal, setViewTicketModal] = useState(null);
+  const [expandedCitas, setExpandedCitas] = useState({});
+  const [deleteAppointment, setDeleteAppointment] = useState(null);
+  const [editingAppointment, setEditingAppointment] = useState(null);
   const [newTicketModalOpen, setNewTicketModalOpen] = useState(false);
   const [newAppointmentModalOpen, setNewAppointmentModalOpen] = useState(false);
   const [newCategoryModalOpen, setNewCategoryModalOpen] = useState(false);
@@ -113,19 +122,55 @@ export default function Agenda() {
   }, []);
 
   useEffect(() => {
-    if (!bridgeModalData && !newAppointmentModalOpen && !newCategoryModalOpen) return;
+    if (!bridgeModalData && !newAppointmentModalOpen && !newCategoryModalOpen && !deleteAppointment) return;
     const handleEsc = (e) => {
       if (e.key === "Escape") {
         if (bridgeModalData) setBridgeModalData(null);
-        if (newAppointmentModalOpen) setNewAppointmentModalOpen(false);
+        if (newAppointmentModalOpen) closeAppointmentForm();
         if (newCategoryModalOpen) setNewCategoryModalOpen(false);
+        if (deleteAppointment) setDeleteAppointment(null);
       }
     };
     document.addEventListener("keydown", handleEsc);
     return () => document.removeEventListener("keydown", handleEsc);
-  }, [bridgeModalData, newAppointmentModalOpen, newCategoryModalOpen]);
+  }, [bridgeModalData, newAppointmentModalOpen, newCategoryModalOpen, deleteAppointment]);
 
+  function getPeriodoRange() {
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const end = new Date(start);
+
+    if (periodo === "Esta semana") {
+      // La semana de la agenda empieza el lunes.
+      const daysSinceMonday = (start.getDay() + 6) % 7;
+      start.setDate(start.getDate() - daysSinceMonday);
+      end.setTime(start.getTime());
+      end.setDate(start.getDate() + 6);
+    } else if (periodo === "Próximos 15 días") {
+      end.setDate(end.getDate() + 14);
+    } else if (periodo === "Este mes") {
+      end.setMonth(end.getMonth() + 1, 0);
+    }
+
+    const toKey = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    return { start: toKey(start), end: toKey(end) };
+  }
+
+  const periodoRange = getPeriodoRange();
   const citasFiltradas = citas.filter((c) => {
+    if (
+      !c.startDate ||
+      c.startDate < periodoRange.start ||
+      c.startDate > periodoRange.end
+    ) {
+      return false;
+    }
     if (categoriaFiltro !== "Todos" && c.categoryName !== categoriaFiltro) {
       return false;
     }
@@ -136,6 +181,91 @@ export default function Agenda() {
     }
     return true;
   });
+
+  function isVerificationCategory(categoryId) {
+    return categorias.find((category) => String(category.IdCategoria) === String(categoryId))?.Nombre === "Verificación";
+  }
+
+  function getCalculatedVerificationDate(vehicleId) {
+    const vehicle = vehicles.find((item) => String(item.id) === String(vehicleId));
+    return vehicle?.verification?.dueDate || null;
+  }
+
+  function handleAppointmentCategoryChange(categoryId, setCategoryId, setDate) {
+    setCategoryId(categoryId);
+    if (isVerificationCategory(categoryId)) {
+      const calculatedDate = getCalculatedVerificationDate(newApptVehicleId);
+      if (calculatedDate) setDate(calculatedDate);
+    }
+  }
+
+  function toggleCita(id) {
+    setExpandedCitas((previous) => ({ ...previous, [id]: !previous[id] }));
+  }
+
+  function openEditAppointment(cita) {
+    setEditingAppointment({ ...cita });
+    setNewApptVehicleId(cita.vehicleId);
+    setNewApptName(cita.name);
+    setNewApptCategoryId(String(cita.categoryId));
+    setNewApptDate(cita.startDate);
+    setApptError(null);
+    setNewAppointmentModalOpen(true);
+  }
+
+  function closeAppointmentForm() {
+    setNewAppointmentModalOpen(false);
+    setEditingAppointment(null);
+    setNewApptName("");
+    setNewApptVehicleId("");
+    setNewApptCategoryId("");
+    setNewApptDate(new Date().toISOString().slice(0, 10));
+    setApptError(null);
+  }
+
+  async function handleSaveAppointment(e) {
+    e.preventDefault();
+    if (!newApptVehicleId || !newApptName.trim() || !newApptCategoryId || !newApptDate) {
+      setApptError("Todos los campos obligatorios deben completarse.");
+      return;
+    }
+
+    setSavingAppt(true);
+    setApptError(null);
+    try {
+      const payload = {
+        vehicleId: newApptVehicleId,
+        name: newApptName.trim(),
+        startDate: newApptDate,
+        recurring: false,
+        intervalDays: null,
+        notify: true,
+        categoryId: Number(newApptCategoryId),
+      };
+      if (editingAppointment) {
+        await updateReminder(editingAppointment.id, payload);
+      } else {
+        await createReminder(payload);
+      }
+      closeAppointmentForm();
+      loadData();
+    } catch (err) {
+      setApptError(err.message || "Error al guardar la cita.");
+    } finally {
+      setSavingAppt(false);
+    }
+  }
+
+  async function handleDeleteAppointment() {
+    if (!deleteAppointment) return;
+    try {
+      await deleteReminder(deleteAppointment.id);
+      setDeleteAppointment(null);
+      loadData();
+    } catch (err) {
+      alert(err.message || "No se pudo eliminar la cita.");
+    }
+  }
 
   function handleGenerarTicket(cita) {
     const activeTicket = tickets.find(
@@ -224,36 +354,6 @@ export default function Agenda() {
     }
   }
 
-  async function handleCreateAppointment(e) {
-    e.preventDefault();
-    if (!newApptVehicleId || !newApptName.trim() || !newApptCategoryId) {
-      setApptError("Todos los campos obligatorios deben completarse.");
-      return;
-    }
-
-    setSavingAppt(true);
-    setApptError(null);
-    try {
-      await createReminder({
-        vehicleId: newApptVehicleId,
-        name: newApptName.trim(),
-        startDate: newApptDate,
-        recurring: false,
-        intervalDays: null,
-        notify: true,
-        categoryId: Number(newApptCategoryId),
-      });
-      setNewAppointmentModalOpen(false);
-      setNewApptName("");
-      setNewApptVehicleId("");
-      loadData();
-    } catch (err) {
-      setApptError(err.message || "Error al crear la cita.");
-    } finally {
-      setSavingAppt(false);
-    }
-  }
-
   async function handleCreateCategory(e) {
     e.preventDefault();
     if (!newCatName.trim()) {
@@ -296,7 +396,10 @@ export default function Agenda() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => setNewAppointmentModalOpen(true)}
+              onClick={() => {
+                closeAppointmentForm();
+                setNewAppointmentModalOpen(true);
+              }}
               className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" /> Nueva Cita
@@ -443,7 +546,6 @@ export default function Agenda() {
                 <thead>
                   <tr className="border-b border-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-400">
                     <th className="px-6 py-3 font-medium">Fecha</th>
-                    <th className="px-6 py-3 font-medium">Servicio</th>
                     <th className="px-6 py-3 font-medium">Vehículo</th>
                     <th className="px-6 py-3 font-medium">Cliente</th>
                     <th className="px-6 py-3 font-medium">Categoría</th>
@@ -452,62 +554,70 @@ export default function Agenda() {
                 </thead>
                 <tbody>
                   {citasFiltradas.map((cita) => (
-                    <tr
-                      key={cita.id}
-                      className="border-t border-slate-100 transition-colors hover:bg-slate-50"
-                    >
-                      <td className="px-6 py-4 text-slate-600">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-slate-400" />
-                          <span className="font-medium text-slate-900">{cita.startDate}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-medium text-slate-900">
-                        {cita.name}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                            <Car className="h-4 w-4" />
-                          </span>
-                          <div>
-                            <p className="font-medium text-slate-900">{cita.vehiculo || "Vehículo"}</p>
-                            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-600">
-                              {cita.placas}
-                            </span>
+                    <Fragment key={cita.id}>
+                      <tr
+                        onClick={() => toggleCita(cita.id)}
+                        className="cursor-pointer border-t border-slate-100 transition-colors hover:bg-slate-50"
+                      >
+                        <td className="px-6 py-4 text-slate-600">
+                          <div className="flex items-center gap-2">
+                            {expandedCitas[cita.id] ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                            <Clock className="h-4 w-4 text-slate-400" />
+                            <span className="font-medium text-slate-900">{cita.startDate}</span>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-slate-700">
-                          <User className="h-4 w-4 text-slate-400" />
-                          <span>{cita.cliente || "Cliente"}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={[
-                            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
-                            cita.categoryColor || "bg-slate-50 text-slate-600 border-slate-200",
-                          ].join(" ")}
-                        >
-                          {cita.categoryName}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleGenerarTicket(cita)}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-orange-600 transition-colors"
-                        >
-                          <FileText className="h-3.5 w-3.5" /> Generar Ticket
-                        </button>
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                              <Car className="h-4 w-4" />
+                            </span>
+                            <div>
+                              <p className="font-medium text-slate-900">{cita.vehiculo || "Vehículo"}</p>
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-600">{cita.placas}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 text-slate-700">
+                            <User className="h-4 w-4 text-slate-400" />
+                            <span>{cita.cliente || "Cliente"}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={["inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium", cita.categoryColor || "bg-slate-50 text-slate-600 border-slate-200"].join(" ")}>
+                            {cita.categoryName}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
+                            <button type="button" onClick={() => openEditAppointment(cita)} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50" title="Editar cita">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button type="button" onClick={() => setDeleteAppointment(cita)} className="rounded-lg border border-red-200 p-2 text-red-500 hover:bg-red-50" title="Eliminar cita">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button type="button" onClick={() => handleGenerarTicket(cita)} className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-orange-600 transition-colors">
+                              <FileText className="h-3.5 w-3.5" /> Generar Ticket
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedCitas[cita.id] && (
+                        <tr className="bg-slate-50">
+                          <td colSpan={5} className="px-6 py-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Descripción del servicio</p>
+                            <p className="mt-1 text-sm text-slate-700">{cita.name || "Sin descripción."}</p>
+                            {cita.verification && (
+                              <p className="mt-2 text-xs text-slate-500">Verificación: {cita.verification.color} · No circula {cita.verification.noCircula} · {cita.verification.periodLabel}</p>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))}
                   {citasFiltradas.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400">
+                      <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">
                         No hay citas programadas. Da clic en "Nueva Cita" para agendar la primera.
                       </td>
                     </tr>
@@ -539,7 +649,7 @@ export default function Agenda() {
                     </span>
                   </div>
 
-                  <div className="mt-3 text-sm font-bold text-slate-900">{cita.name}</div>
+                  <div className="mt-3 text-sm font-bold text-slate-900">{cita.vehiculo || "Vehículo"}</div>
 
                   <div className="mt-4 space-y-2">
                     <div className="flex items-center gap-3">
@@ -561,11 +671,42 @@ export default function Agenda() {
                   </div>
                 </div>
 
-                <div className="mt-6 border-t border-slate-100 pt-4 text-right">
+                <button
+                  type="button"
+                  onClick={() => toggleCita(cita.id)}
+                  className="mt-4 flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  <span>{expandedCitas[cita.id] ? "Ocultar servicio" : "Ver servicio"}</span>
+                  {expandedCitas[cita.id] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </button>
+                {expandedCitas[cita.id] && (
+                  <div className="mt-2 rounded-lg bg-slate-50 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Descripción del servicio</p>
+                    <p className="mt-1 text-sm text-slate-700">{cita.name || "Sin descripción."}</p>
+                  </div>
+                )}
+
+                <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => openEditAppointment(cita)}
+                    className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+                    title="Editar cita"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteAppointment(cita)}
+                    className="rounded-lg border border-red-200 p-2 text-red-500 hover:bg-red-50"
+                    title="Eliminar cita"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleGenerarTicket(cita)}
-                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-orange-500 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-orange-600 transition-colors"
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-orange-500 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-orange-600 transition-colors"
                   >
                     <FileText className="h-3.5 w-3.5" /> Generar Ticket
                   </button>
@@ -661,25 +802,33 @@ export default function Agenda() {
               <div className="relative flex items-center justify-center border-b border-slate-100 bg-slate-50 px-6 py-4">
                 <button
                   type="button"
-                  onClick={() => setNewAppointmentModalOpen(false)}
+                  onClick={closeAppointmentForm}
                   className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-200/60 hover:text-slate-600"
                 >
                   <X className="h-5 w-5" />
                 </button>
                 <div className="flex items-center gap-2 text-orange-600">
                   <CalendarIcon className="h-5 w-5" />
-                  <h3 className="text-base font-bold text-slate-900">Programar Nueva Cita</h3>
+                  <h3 className="text-base font-bold text-slate-900">
+                    {editingAppointment ? "Editar Cita" : "Programar Nueva Cita"}
+                  </h3>
                 </div>
               </div>
 
-              <form onSubmit={handleCreateAppointment} className="space-y-4 p-6">
+              <form onSubmit={handleSaveAppointment} className="space-y-4 p-6">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-600">
                     Vehículo *
                   </label>
                   <select
                     value={newApptVehicleId}
-                    onChange={(e) => setNewApptVehicleId(e.target.value)}
+                    onChange={(e) => {
+                      setNewApptVehicleId(e.target.value);
+                      if (isVerificationCategory(newApptCategoryId)) {
+                        const calculatedDate = getCalculatedVerificationDate(e.target.value);
+                        if (calculatedDate) setNewApptDate(calculatedDate);
+                      }
+                    }}
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
                     required
                   >
@@ -698,7 +847,9 @@ export default function Agenda() {
                   </label>
                   <select
                     value={newApptCategoryId}
-                    onChange={(e) => setNewApptCategoryId(e.target.value)}
+                    onChange={(e) =>
+                      handleAppointmentCategoryChange(e.target.value, setNewApptCategoryId, setNewApptDate)
+                    }
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-orange-400"
                     required
                   >
@@ -736,6 +887,12 @@ export default function Agenda() {
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-orange-400"
                     required
                   />
+                  {isVerificationCategory(newApptCategoryId) &&
+                    getCalculatedVerificationDate(newApptVehicleId) && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        (fecha calculada de verificación)
+                      </p>
+                    )}
                 </div>
 
                 {apptError && (
@@ -747,7 +904,7 @@ export default function Agenda() {
                 <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={() => setNewAppointmentModalOpen(false)}
+                    onClick={closeAppointmentForm}
                     className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
                   >
                     Cancelar
@@ -757,10 +914,44 @@ export default function Agenda() {
                     disabled={savingAppt}
                     className="rounded-lg bg-orange-500 px-4 py-2 text-xs font-medium text-white hover:bg-orange-600 transition-colors disabled:opacity-60"
                   >
-                    {savingAppt ? "Guardando..." : "Agendar Cita"}
+                    {savingAppt ? "Guardando..." : editingAppointment ? "Guardar cambios" : "Agendar Cita"}
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Confirmación de eliminación permanente de cita */}
+        {deleteAppointment && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-fadeIn">
+            <div className="w-full max-w-sm space-y-3 rounded-2xl bg-white p-6 shadow-2xl">
+              <div className="flex items-center gap-2 text-red-600">
+                <Trash2 className="h-5 w-5" />
+                <h3 className="text-base font-bold text-slate-900">Eliminar cita</h3>
+              </div>
+              <p className="text-sm text-slate-600">
+                ¿Desea borrar permanentemente la cita{" "}
+                <span className="font-medium">"{deleteAppointment.name}"</span>
+                {deleteAppointment.vehiculo ? ` de ${deleteAppointment.vehiculo}` : ""}? Esta
+                acción no se puede deshacer.
+              </p>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteAppointment(null)}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAppointment}
+                  className="rounded-lg bg-red-500 px-4 py-2 text-xs font-medium text-white hover:bg-red-600 transition-colors"
+                >
+                  Eliminar
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -12,6 +12,10 @@ function mapReminderFromApi(raw) {
     categoryId: raw.IdCategoria,
     categoryName: raw.CategoriaNombre,
     categoryColor: raw.CategoriaColor,
+    automatic: !!raw.EsAutomatico,
+    plateColor: raw.ColorPlaca || "",
+    noCirculaDay: raw.DiaNoCircula || "",
+    verification: raw.DatosVerificacion || null,
   };
 }
 
@@ -43,6 +47,7 @@ export async function fetchAllReminders() {
     automatic: !!raw.EsAutomatico,
     plateColor: raw.ColorPlaca || "",
     noCirculaDay: raw.DiaNoCircula || "",
+    verification: raw.DatosVerificacion || null,
   }));
 }
 
