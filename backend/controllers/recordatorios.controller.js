@@ -29,6 +29,8 @@ async function ensureVerificationReminder(pool, vehicle, options = {}) {
               AND (ClaveAutomatica IS NULL OR ClaveAutomatica <> @ClaveAutomatica)
         `);
 
+    // Solo respeta citas manuales que aún no hayan vencido: si la única cita
+    // en la ventana ya pasó, el vehículo necesita su nueva verificación.
     const result = await pool.request()
         .input('IdVehiculo', sql.Int, vehicle.IdVehiculo)
         .input('TipoRecordatorio', sql.NVarChar, 'Verificación')
@@ -38,6 +40,7 @@ async function ensureVerificationReminder(pool, vehicle, options = {}) {
         .input('WindowStart', sql.Date, data.windowStart)
         .input('WindowEnd', sql.Date, data.windowEnd)
         .input('AutoKeyPrefix', sql.NVarChar, `VERIFICACION-${vehicle.IdVehiculo}-%`)
+        .input('ReferenceDate', sql.Date, data.dueDate)
         .query(`
             INSERT INTO Recordatorios
                 (IdVehiculo, TipoRecordatorio, FechaInicio, EsRecurrente, IntervaloDias, Notificar, IdCategoria, EsAutomatico, ClaveAutomatica)
@@ -56,6 +59,7 @@ async function ensureVerificationReminder(pool, vehicle, options = {}) {
                 WHERE r.IdVehiculo = @IdVehiculo
                   AND c.Nombre = 'Verificación'
                   AND r.FechaInicio BETWEEN @WindowStart AND @WindowEnd
+                  AND r.FechaInicio >= @ReferenceDate
                   AND (r.EsAutomatico = 0 OR r.ClaveAutomatica LIKE @AutoKeyPrefix)
             )
         `);

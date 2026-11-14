@@ -90,7 +90,7 @@ export default function Agenda() {
   const [savingCat, setSavingCat] = useState(false);
   const [catError, setCatError] = useState(null);
 
-  const periodos = ["Esta semana", "Próximos 15 días", "Este mes"];
+  const periodos = ["Esta semana", "Próximos 15 días", "Este mes", "Todas las fechas"];
 
   function loadData(silent = false) {
     if (!silent) setLoading(true);
@@ -139,6 +139,10 @@ export default function Agenda() {
     const today = new Date();
     const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const end = new Date(start);
+
+    if (periodo === "Todas las fechas") {
+      return { start: "0000-00-00", end: "9999-99-99" };
+    }
 
     if (periodo === "Esta semana") {
       // La semana de la agenda empieza el lunes.
